@@ -6,6 +6,10 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import threading
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 
 def get_manga_by_id(manga_id: str) -> Manga:
@@ -70,7 +74,7 @@ def get_manga_by_id(manga_id: str) -> Manga:
     )
 
 
-def send_pdfs(pdf_files: list, subject = "", message = "", send_to = "youlof2-kindle@kindle.com", password = "xbhrzhlkencjeluu"):
+def send_pdfs(pdf_files: list, subject = "", message = "", send_to = "", password = ""):
     def send_email_pdf(pdf_file: str):
         # Attach the pdf to the msg going by e-mail
         with open(pdf_file, "rb") as file:
@@ -87,13 +91,13 @@ def send_pdfs(pdf_files: list, subject = "", message = "", send_to = "youlof2-ki
     server = smtplib.SMTP("smtp.gmail.com", 587)
     server.set_debuglevel(True)
     server.starttls()
-    server.login("youssefbot01@gmail.com", password)
+    server.login(os.getenv("SENDER_EMAIL"), os.getenv("SENDER_EMAIL_PASSWORD"))
     # Craft message (obj)
     msg = MIMEMultipart()
 
     msg["Subject"] = subject
-    msg["From"] = "youssefbot01@gmail.com"
-    msg["To"] = send_to
+    msg["From"] = os.getenv("SENDER_EMAIL")
+    msg["To"] = os.getenv("KINDLE_EMAIL")
     # Insert the text to the msg going by e-mail
     msg.attach(MIMEText(message, "plain"))
     
