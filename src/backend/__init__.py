@@ -74,20 +74,20 @@ def get_manga_by_id(manga_id: str) -> Manga:
     )
 
 
-def send_pdfs(pdf_files: list, subject = "", message = "", send_to = "", password = ""):
+def send_pdfs(pdf_files: list):
+    ## credits: http://linuxcursor.com/python-programming/06-how-to-send-pdf-ppt-attachment-with-html-body-in-python-script
     def send_email_pdf(pdf_file: str):
         # Attach the pdf to the msg going by e-mail
         with open(pdf_file, "rb") as file:
-            attach = MIMEApplication(file.read(),_subtype="pdf")
-        
+            attach = MIMEApplication(file.read(), _subtype="pdf")
+
         pdf_filename = str(pdf_file).split("\\")[-1]
-        attach.add_header("Content-Disposition","attachment",filename=pdf_filename)
+        attach.add_header("Content-Disposition", "attachment", filename=pdf_filename)
         msg.attach(attach)
-    
+
         # send msg
         server.send_message(msg)
-        
-    ## credits: http://linuxcursor.com/python-programming/06-how-to-send-pdf-ppt-attachment-with-html-body-in-python-script
+
     server = smtplib.SMTP("smtp.gmail.com", 587)
     server.set_debuglevel(True)
     server.starttls()
@@ -95,17 +95,17 @@ def send_pdfs(pdf_files: list, subject = "", message = "", send_to = "", passwor
     # Craft message (obj)
     msg = MIMEMultipart()
 
-    msg["Subject"] = subject
+    msg["Subject"] = ""
     msg["From"] = os.getenv("SENDER_EMAIL")
     msg["To"] = os.getenv("KINDLE_EMAIL")
     # Insert the text to the msg going by e-mail
-    msg.attach(MIMEText(message, "plain"))
-    
+    msg.attach(MIMEText("", "plain"))
+
     all_threads = []
     for pdf_file in pdf_files:
         thread = threading.Thread(target=send_email_pdf, args=(pdf_file))
         all_threads.append(thread)
         thread.start()
-    
+
     # Join all threads after finishing
     [th.join() for th in all_threads]
