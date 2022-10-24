@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title></title>
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <style>
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        table-layout: fixed;
+        text-align: center;
+      }
+
+      td,
+      th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+      }
+
+      h1 {
+        text-align: center;
+      }
+
+      .small-col {
+        width: 10%;
+      }
+
+      .X {
+        color: red;
+        text-align: center;
+        font-size: 2.4em;
+      }
+
+      .numbering {
+        text-align: center;
+        font-size: 2em;
+      }
+
+      .no-margin {
+        margin: 0;
+      }
+
+      .align-center {
+        text-align: center;
+      }
+
+      .action-btn {
+        width: 100%;
+        background-color: white;
+        color: black;
+        font-size: 50px;
+        bottom: 0;
+        position: fixed;
+        padding: 5% 5%;
+      }
+
+      #loading {
+        position: fixed; /* Sit on top of the page content */
+        display: none; /* Hidden by default */
+        width: 100%; /* Full width (cover the whole page) */
+        height: 100%; /* Full height (cover the whole page) */
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(
+          0,
+          0,
+          0,
+          0.5
+        ); /* Black background with opacity */
+        z-index: 2; /* Specify a stack order in case you're using a different order for other elements */
+        cursor: pointer; /* Add a pointer on hover */
+      }
+
+      #loading-text {
+        text-align: center;
+        color: white;
+        margin-top: 30%;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Que</h1>
+    <hr />
+    <table>
+      <h3>Chapters</h3>
+      {% if volumes|length != 0 %} {% for vol, ch in volumes|zip(chapters) %}
+      <tr>
+        <td class="numbering small-col">{{ loop.index0+1 }}.</td>
+        <td>
+          <h3 class="no-margin">Volume {{ vol }}</h3>
+          <h2 class="no-margin">Chapter {{ ch }}</h2>
+        </td>
+        <td class="X small-col">
+          <a href="{{ url_for('que_remove', item_id=vol ~ '-' ~ ch) }}">X</a>
+        </td>
+      </tr>
+      {% endfor %} {% else %}
+      <h2 class="align-center">-</h2>
+      {% endif %}
+    </table>
+    <hr />
+    <table>
+      <h3>Volumes</h3>
+      {% if complete_volumes|length != 0 %} {% for com_vol in complete_volumes%}
+      <tr>
+        <td class="numbering small-col">{{ loop.index0+1 }}.</td>
+        <td>
+          <h2 class="no-margin">Complete Volume {{ com_vol }}</h2>
+        </td>
+        <td class="X small-col">
+          <a href="{{ url_for('que_remove', item_id='volume_' ~  com_vol) }}"
+            >X</a
+          >
+        </td>
+      </tr>
+      {% endfor %} {% else %}
+      <h2 class="align-center">-</h2>
+      {% endif %}
+    </table>
+
+    <form action="{{ url_for('que_checkout') }}" method="POST">
+      <input
+        class="action-btn"
+        type="submit"
+        name="action"
+        value="Checkout"
+        onclick="$('#loading').show();"
+      />
+
+      <div id="loading">
+        <div id="loading-text">
+          <img src="{{ url_for('static', filename='loading.gif') }}" alt="" />
+          <h2 class="align-center">Processing...<br>Please Wait.</h2>
+        </div>
+      </div>
+    </form>
+    <script
+      type="text/javascript"
+      src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"
+    ></script>
+  </body>
+</html>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <style>
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        table-layout: fixed;
+      }
+
+      .content-td,
+      .content-th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+      }
+
+      .content-tr:nth-child(even) {
+        background-color: #dddddd;
+      }
+    </style>
+    <style>
+      {% block styles %}{% endblock %}
+    </style>
+  </head>
+
+  <body>
+    <h1 style="text-align: center">{{ title }}</h1>
+    <h6 style="text-align: center">{{ id }}</h6>
+    <p>{{ description }}</p>
+    <table class="volumes-table">
+      <tr>
+        <td>Status</td>
+        <td>
+          <h3>{{ status }}</h3>
+        </td>
+      </tr>
+      <tr>
+        <td>Volumes</td>
+        <td>
+          <h3>{{ volumes|length }}</h3>
+        </td>
+      </tr>
+    </table>
+    <hr />
+    {% block content %}{% endblock %}
+  </body>
+</html>

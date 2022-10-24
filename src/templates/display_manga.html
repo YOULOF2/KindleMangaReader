@@ -1,0 +1,23 @@
+{% extends "display_base.html" %}
+
+{% block content %}
+
+  <table style="width:100%">
+    <tr class="content-tr">
+      <th class="content-th">Volume</th>
+      <th class="content-th">Number of Chapters</th>
+    </tr>
+
+    {% for volume in volumes %}
+      <tr class="content-tr">
+        <td class="content-td">       
+          <h2><a href="{{url_for('display_volume', title=volume.title)}}">{{ volume.title }}</a></h2>
+        </td>
+        <td class="content-td">{{ volume.chapters|length }}</td>
+      </tr>
+      {% endfor %}
+
+    </table>
+
+
+{% endblock %}
