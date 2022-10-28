@@ -1,4 +1,3 @@
-from select import kevent
 from PIL import Image
 from fpdf import FPDF
 from PyPDF2 import PdfMerger
