@@ -1,17 +1,31 @@
+from select import kevent
 from PIL import Image
 from fpdf import FPDF
 from PyPDF2 import PdfMerger
 from pathlib import Path
 import pickle
-from backend.utils import *
+from backend.Utils import get_file_size_for, get_request_for, PATH_TO_TEMP, loop
+import requests
 
 
 class MangaChapter:
     def __init__(self, chapter_num: float, chapter_id: str) -> None:
+        """Contains ID and Number of Chapter
+
+        Args:
+            chapter_num (float): The number of the chapter
+            chapter_id (str): The ID of the chapter from MangaDex
+        """
         self.number = chapter_num
         self.id = chapter_id
 
     def download_imgs(self) -> list[str]:
+        """Dowloads The Images of the chapter using the MangaDex `at-home` endpoint
+
+        Returns:
+            list[str]: List of all images
+        """
+
         request_json = get_request_for(
             f"https://api.mangadex.org/at-home/server/{self.id}"
         )
@@ -37,7 +51,25 @@ class MangaChapter:
 
         return files
 
-    def to_pdf(self, volume_title=None, standalone=False) -> str:
+    # TODO: Add cover for each chapter using PILLOW and manga cover
+    # TODO: Chapter can be separated to multiple pdfs according to the size, if the `inparts` argument is True
+    # TODO: Change return type to be either `list` or `str`
+    def to_pdf(self, **kwargs) -> str:
+        """Converts Chapter images to PDF.
+        If `volume_title` and `manga_name` variables are found in the kwargs,
+        the chapter is processed as standalone with a cover image and the volume title and manga name in the filename.
+
+        Args:
+            **kwargs (dict): 
+                    volume_title (str): Volume Title
+                    manga_name (str): Manga Name
+                    
+        Returns:
+            str: PDF filename
+        """
+        volume_title = kwargs.get("volume_title")
+        manga_name = kwargs.get("manga_name")
+
         files_list = self.download_imgs()
 
         pdf = FPDF()
@@ -85,15 +117,14 @@ class MangaChapter:
 
             pdf.image(file, 0, 0, width, height)
 
-        if volume_title is not None:
+        if volume_title:
             pdf_filename = (
-                f"{str(PATH_TO_TEMP)}\\Volume {volume_title} Chapter {self.number}.pdf"
+                f"{str(PATH_TO_TEMP)}\\{manga_name} v{volume_title} ch{self.number}.pdf"
             )
         else:
             pdf_filename = f"{str(PATH_TO_TEMP)}\\Chapter {self.number}.pdf"
-            
+
         pdf.output(pdf_filename, "F")
-        
 
         return pdf_filename
 
@@ -108,11 +139,28 @@ class MangaVolume:
         volume_title: str,
         chapters: list[MangaChapter],
     ) -> None:
+        """Conatins the manga id, volume title, and the list of chapters for a manga volume.
+
+        Args:
+            manga_id (str): Manga ID from MangaDex
+            volume_title (str): The title of the volume
+            chapters (list[MangaChapter]): List of `MangaChapter` objects.
+        """
         self.manga_id = manga_id
         self.title = volume_title
         self.chapters = chapters
 
-    def to_pdf(self) -> list:
+    # TODO: for each volume part add a cover page with volume cover and PILOOW text
+    # TODO: Change return type to support `str` or `list` 
+    def to_pdf(self, in_parts=True) -> list[str]:
+        """Converts the volume object to PDFs
+
+        Args:
+            in_parts (bool): `True` by default. Set to `False` to make volume into one PDF only.
+        
+        Returns:
+            list (str): List of PDF parts
+        """
         all_pdfs = []
 
         # Gets Cover for particular volume
@@ -146,23 +194,9 @@ class MangaVolume:
                     cover_height * 0.264583
                 )
 
-                # given we are working with A4 format size
-                pdf_size = {"P": {"w": 210, "h": 297}, "L": {"w": 297, "h": 210}}
-
-                # get page orientation from image size
-                orientation = "P" if cover_width < cover_height else "L"
-
                 #  make sure image size is not greater than the pdf format size
-                cover_width = (
-                    cover_width
-                    if cover_width < pdf_size[orientation]["w"]
-                    else pdf_size[orientation]["w"]
-                )
-                cover_height = (
-                    cover_height
-                    if cover_height < pdf_size[orientation]["h"]
-                    else pdf_size[orientation]["h"]
-                )
+                cover_width = cover_width if cover_width < 210 else 210
+                cover_height = cover_height if cover_height < 297 else 297
 
                 cover_pdf.add_page()
 
@@ -183,10 +217,11 @@ class MangaVolume:
 
         all_volume_parts = set([])
         total_file_size = 0
-        volume_part = 1
         merger = PdfMerger()
-        for pdf in loop(all_pdfs, description="Creating Volume"):
-            if total_file_size <= 18:
+        for volume_part, pdf in loop(
+            enumerate(all_pdfs, start=1), description="Creating Volume"
+        ):
+            if total_file_size <= 11 and in_parts:
                 total_file_size += get_file_size_for(pdf)
 
                 merger.append(pdf)
@@ -198,7 +233,6 @@ class MangaVolume:
                 merger.close()
                 merger = PdfMerger()
 
-                volume_part += 1
                 total_file_size = 0
 
                 merger.append(pdf)
@@ -216,6 +250,7 @@ class MangaVolume:
         return f"{self.title = }"
 
 
+# TODO: Add doc strings to Manga class and its methods
 class Manga:
     MANGA_DATA_STORAGE_PATH = Path(PATH_TO_TEMP, "data.manga")
 

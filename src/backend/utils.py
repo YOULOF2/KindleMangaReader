@@ -25,10 +25,16 @@ def get_request_for(url: str) -> dict:
     return request.json()
 
 def clear_temp():
-    all_files = glob.glob(f"{PATH_TO_TEMP}/*")
+    execlude = [f"{PATH_TO_TEMP}\\.gitignore"]
+    all_files = glob.glob(f"{PATH_TO_TEMP}\\*")
+    
+    if len(all_files) == 0:
+        return
+    
     for file in all_files:
-        print(file)
-        os.remove(file)
+        if file not in execlude:
+            print(file)
+            os.remove(file)
         
 def get_file_size_for(path_to_file: str) -> float:
     size_in_bytes = os.path.getsize(path_to_file)
