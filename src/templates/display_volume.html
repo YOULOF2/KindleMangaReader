@@ -1,7 +1,7 @@
 {% extends "display_base.html" %} 
 
 {% block styles %}
-
+{{ super() }}
 .button { width:100%;
 display:block; } /* The switch - the box around the slider */ .switch {
 position: relative; display: inline-block; width: 120px; height: 68px;} /* Hide
@@ -19,28 +19,36 @@ font-size: 50px; }
 
 {% endblock styles %} 
 
+
+{% block navbar %}
+<table>
+  <tr>
+    <input class="action-btn" type="submit" name="action" value="Back" form="selectform" />
+  </tr>
+
+  <tr>
+    <input class="action-btn" type="submit" name="action" value="Que" form="selectform" />
+  </tr>
+</table>
+{% endblock %}
+
 {% block content %}
-
-<form action="{{ url_for('que_add', title=volume.title) }}" method="POST">
-  <table>
-    <tr>
-      <input class="action-btn" type="submit" name="action" value="Back" />
-    </tr>
-
-    <tr>
-      <input class="action-btn" type="submit" name="action" value="Que" />
-    </tr>
-  </table>
-  <br />
-
+{{ super() }}
+<form action="{{ url_for('que_add', title=volume.title, msID=msID) }}" method="POST" id="selectform">
   <table>
     <tr class="content-tr" style="background-color: #c0c0c0">
-      <td class="content-td">
+      <td class="content-td">   
         <h1><em>Dowload All of Volume {{ volume.title }} </em></h1>
       </td>
       <td class="content-td" style="font-size: 1.2em; text-align: center;">
         <label class="switch">
-          <input type="checkbox" name="volume_{{ volume.title }}" />
+          
+          {% if is_checked_list[0] %}
+            <input type="checkbox" name="volume_{{ volume.title }}" checked>
+          {% else %}
+            <input type="checkbox" name="volume_{{ volume.title }}" />
+          {% endif %}
+          
           <span class="slider"></span>
         </label>
       </td>
@@ -58,14 +66,21 @@ font-size: 50px; }
         <h2>Chapter Number</h2>
       </th>
     </tr>
-    {% for chapter in volume.chapters %}
+    {% for chapter, is_checked in volume.chapters|zip(is_checked_list[1:]) %}
     <tr class="content-tr">
       <td class="content-td">
         <label class="switch">
+          {% if is_checked %}
           <input
             type="checkbox"
             name="{{ volume.title }}-{{ chapter.number }}"
-          />
+          checked>
+          {% else %}
+          <input
+            type="checkbox"
+            name="{{ volume.title }}-{{ chapter.number }}"
+          >
+          {% endif %}
           <span class="slider"></span>
         </label>
       </td>

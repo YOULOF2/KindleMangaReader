@@ -1,13 +1,6 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title></title>
-    <meta name="description" content="" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-    <style>
+{% extends "general_base.html" %}
+{% block styles %}
+{{ super() }}
       table {
         border-collapse: collapse;
         width: 100%;
@@ -83,14 +76,38 @@
         color: white;
         margin-top: 30%;
       }
-    </style>
-  </head>
-  <body>
+
+    .td-btn {
+      width: 50%; 
+      display: inline-block; 
+      background-color: black;
+      color: white;
+      font-size: 50px; 
+    } 
+    {% endblock %}
+
+
+{% block navbar %}
+<form action="{{ url_for('redirect_to', msID=msID) }}" method="POST">
+  <table>
+    <tr>
+      <input class="td-btn" type="submit" name="action" value="Home" />
+    </tr>
+    <tr>
+      <input class="td-btn" type="submit" name="action" value="Volumes" />
+    </tr>
+  </table>
+</form>
+{% endblock %}
+  
+{% block content %}
+{{ super() }}
     <h1>Que</h1>
     <hr />
     <table>
       <h3>Chapters</h3>
-      {% if volumes|length != 0 %} {% for vol, ch in volumes|zip(chapters) %}
+      {% if volumes|length != 0 %}
+       {% for vol, ch in volumes|zip(chapters) %}
       <tr>
         <td class="numbering small-col">{{ loop.index0+1 }}.</td>
         <td>
@@ -125,7 +142,7 @@
       {% endif %}
     </table>
 
-    <form action="{{ url_for('que_checkout') }}" method="POST">
+    <form action="{{ url_for('que_checkout', msID=msID) }}" method="POST">
       <input
         class="action-btn"
         type="submit"
@@ -145,5 +162,4 @@
       type="text/javascript"
       src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"
     ></script>
-  </body>
-</html>
+{% endblock %}

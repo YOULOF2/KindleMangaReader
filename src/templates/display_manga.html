@@ -1,7 +1,29 @@
 {% extends "display_base.html" %}
 
-{% block content %}
+{% block styles %}
+{{ super() }}
+.action-btn {
+  width: 50%; display: inline-block; background-color: black; color: white;
+  font-size: 50px; 
+} 
+{% endblock %}
 
+{% block navbar %}
+<form action="{{ url_for('redirect_to', msID=msID) }}" method="POST">
+  <table>
+    <tr>
+      <input class="action-btn" type="submit" name="action" value="Home" />
+    </tr>
+  
+    <tr>
+      <input class="action-btn" type="submit" name="action" value="Que" />
+    </tr>
+  </table>
+</form>
+{% endblock %}
+
+{% block content %}
+{{ super() }}
   <table style="width:100%">
     <tr class="content-tr">
       <th class="content-th">Volume</th>
@@ -11,7 +33,7 @@
     {% for volume in volumes %}
       <tr class="content-tr">
         <td class="content-td">       
-          <h2><a href="{{url_for('display_volume', title=volume.title)}}">{{ volume.title }}</a></h2>
+          <h2><a href="{{url_for('display_volume', title=volume.title, msID=msID)}}">{{ volume.title }}</a></h2>
         </td>
         <td class="content-td">{{ volume.chapters|length }}</td>
       </tr>

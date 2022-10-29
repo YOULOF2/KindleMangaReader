@@ -5,6 +5,7 @@ from pathlib import Path
 import pickle
 from backend.Utils import get_file_size_for, get_request_for, PATH_TO_TEMP, loop
 import requests
+from uuid import uuid4
 
 
 class MangaChapter:
@@ -59,10 +60,10 @@ class MangaChapter:
         the chapter is processed as standalone with a cover image and the volume title and manga name in the filename.
 
         Args:
-            **kwargs (dict): 
+            **kwargs (dict):
                     volume_title (str): Volume Title
                     manga_name (str): Manga Name
-                    
+
         Returns:
             str: PDF filename
         """
@@ -150,13 +151,13 @@ class MangaVolume:
         self.chapters = chapters
 
     # TODO: for each volume part add a cover page with volume cover and PILOOW text
-    # TODO: Change return type to support `str` or `list` 
+    # TODO: Change return type to support `str` or `list`
     def to_pdf(self, in_parts=True) -> list[str]:
         """Converts the volume object to PDFs
 
         Args:
             in_parts (bool): `True` by default. Set to `False` to make volume into one PDF only.
-        
+
         Returns:
             list (str): List of PDF parts
         """
@@ -251,8 +252,6 @@ class MangaVolume:
 
 # TODO: Add doc strings to Manga class and its methods
 class Manga:
-    MANGA_DATA_STORAGE_PATH = Path(PATH_TO_TEMP, "data.manga")
-
     def __init__(
         self,
         id: str,
@@ -262,6 +261,16 @@ class Manga:
         manga_cover: str,
         volumes: list[MangaVolume],
     ) -> None:
+        """Stores manga data
+
+        Args:
+            id (str): ID from MangaDex
+            title (str): The title of manga
+            description (str): Description of the manga
+            status (str): status of the manga; `ongoing`, `cancelled` or `haitus`
+            manga_cover (str): Coover url of the manga
+            volumes (list[MangaVolume]): List of `MangaVolume` objects
+        """
         self.id = id
         self.title = title
         self.description = description
@@ -272,12 +281,28 @@ class Manga:
     def __str__(self):
         return f"{self.title = }\n{self.description = }\n{self.status = }\n{self.year = }\n{self.cover = }\nNumber of volumes = {len(self.volumes)}"
 
-    def save(self):
-        with open(self.MANGA_DATA_STORAGE_PATH, "wb") as pickle_file:
+    def save(self) -> str:
+        """Save manga object to file
+
+        Returns:
+            object-id (str): ID of manga class
+        """
+        object_id = str(uuid4()).split("-")[0]
+        with open(f"{PATH_TO_TEMP}\\{object_id}.manga", "wb") as pickle_file:
             pickle.dump(self, pickle_file)
 
+        return object_id
+
     @classmethod
-    def load(cls):
-        with open(cls.MANGA_DATA_STORAGE_PATH, "rb") as pickle_file:
+    def load(cls, object_id: str):
+        """load manga object from file
+
+        Args:
+            object_id (str): ID of manga object save
+
+        Returns:
+            Manga (obj): Object instance of Manga class
+        """
+        with open(f"{PATH_TO_TEMP}\\{object_id}.manga", "rb") as pickle_file:
             instance = pickle.load(pickle_file)
         return instance
