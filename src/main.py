@@ -1,44 +1,52 @@
 from time import time
-from urllib import response
 from backend import get_manga_by_id, Manga, send_pdfs
-from flask import Flask, render_template, request, redirect, url_for, make_response
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    make_response,
+    flash,
+)
 import json
 import itertools
+from pprint import pprint
 
 app = Flask(__name__)
+app.secret_key = "123secret"
 app.jinja_env.filters["zip"] = zip
+
+@app.after_request
+def after_request(response):
+    response.headers[
+        "Cache-Control"
+    ] = "no-cache, no-store, must-revalidate, public, max-age=0"
+    response.headers["Expires"] = 0
+    response.headers["Pragma"] = "no-cache"
+    return response
 
 
 @app.route("/", methods=["GET"])
 def index():
     response = make_response(render_template("index.html"))
-
-    if request.cookies.get("que") is not None:
-        response.set_cookie("que", "", expires=0)
-
     response.set_cookie("que", json.dumps({}))
+
     return response
 
 
-@app.route("/manga", methods=["GET", "POST"])
-def display_manga():
-    if request.method == "POST":
-        # text = request.form["text"]
-        text = "737a846b-2e67-4d63-9f7e-f54b3beebac4"
-        manga = get_manga_by_id(text)
-        msID = manga.save()
+@app.route("/get_manga", methods=["POST"])
+def get_manga():
+    text = request.form["text"]
+    # text = "737a846b-2e67-4d63-9f7e-f54b3beebac4"
+    manga = get_manga_by_id(text)
+    msID = manga.save()
 
-        return render_template(
-            "display_manga.html",
-            id=manga.id,
-            title=manga.title,
-            description=manga.description,
-            status=manga.status,
-            volumes=manga.volumes,
-            msID=msID,
-        )
+    return redirect(url_for("display_manga", msID=msID))
 
-    msID = request.args.get("msID")
+
+@app.route("/<string:msID>/manga", methods=["GET"])
+def display_manga(msID: str):
     manga = Manga.load(msID)
     return render_template(
         "display_manga.html",
@@ -51,15 +59,11 @@ def display_manga():
     )
 
 
-@app.route("/volume", methods=["GET"])
-def display_volume():
-    title = request.args.get("title")
-
-    msID = request.args.get("msID")
+@app.route("/<string:msID>/volume/<string:title>", methods=["GET"])
+def display_volume(msID: str, title: str):
     manga: Manga = Manga.load(msID)
 
     que_dict: dict = json.loads(request.cookies.get("que"))
-    print(f"{que_dict = }")
     if title not in que_dict:
         que_dict.update({title: []})
     que = que_dict[title]
@@ -71,7 +75,7 @@ def display_volume():
                 is_checked_list.append(True)
             else:
                 is_checked_list.append(False)
-            
+
             for chapter in volume.chapters:
                 if f"{volume.title}-{chapter.number}" in que:
                     is_checked_list.append(True)
@@ -91,14 +95,12 @@ def display_volume():
             )
 
 
-@app.route("/que", methods=["GET"])
-def display_que():
-    msID = request.args.get("msID")
-
+@app.route("/<string:msID>/que", methods=["GET"])
+def display_que(msID: str):
     que_dict: list[str] = json.loads(request.cookies.get("que"))
     que = list(itertools.chain.from_iterable(que_dict.values()))
-    
-    print(f"{que_dict = }")
+
+    pprint(que_dict)
 
     volumes = []
     chapters = []
@@ -122,11 +124,8 @@ def display_que():
     )
 
 
-@app.route("/que/add", methods=["POST"])
-def que_add():
-    title = request.args.get("title")
-    msID = request.args.get("msID")
-
+@app.route("/<string:msID>/que/add/<string:title>", methods=["POST"])
+def que_add(msID: str, title: str):
     selected_chapters = list(request.form)
     selected_chapters.remove("action")
 
@@ -156,31 +155,31 @@ def que_add():
     return response
 
 
-@app.route("/que/remove", methods=["GET"])
-def que_remove():
-    item_que_id = request.args.get("item_id")
-
-    response = make_response(redirect(url_for("display_que")))
+@app.route("/<string:msID>/que/remove/<string:item_que_id>", methods=["GET"])
+def que_remove(msID: str, item_que_id: str):
+    response = make_response(redirect(url_for("display_que", msID=msID)))
 
     que_dict: dict = json.loads(request.cookies.get("que"))
-    
-    for volume_title, volume_que in que_dict.items():
+
+    for volume_title, volume_que in list(que_dict.items()):
         for item_id in volume_que:
             if item_id == item_que_id:
                 que = que_dict[volume_title]
                 que.remove(item_id)
                 que = list(set(que))
-                que_dict[volume_title] = que
-                
-    print(f"{que_dict = }")
-    
+
+                if len(que) == 0:
+                    que_dict[volume_title] = que
+                    del que_dict[volume_title]
+                    break
+
     response.set_cookie("que", json.dumps(que_dict))
 
     return response
 
 
-@app.route("/que/checkout", methods=["POST"])
-def que_checkout():
+@app.route("/<string:msID>/que/checkout", methods=["POST"])
+def que_checkout(msID: str):
     class InternalVolumeChapter:
         def __init__(self, volume_title: str, chapter_number: str) -> None:
             self.volume_title = volume_title
@@ -188,13 +187,13 @@ def que_checkout():
 
     processing_start = time()
 
-    unfiltered_que: list[str] = json.loads(request.cookies.get("que"))
-    que = set(unfiltered_que)
-    print(f"{que = }")
+    que_dict: dict = json.loads(request.cookies.get("que"))
+    que = list(itertools.chain.from_iterable(que_dict.values()))
 
     # Redirect back to que if que is empty
     if len(que) == 0:
-        return redirect(url_for("display_que"))
+        flash("Que is empty")
+        return redirect(url_for("display_manga", msID=msID))
 
     all_volume_chapters = []
     complete_volumes_titles = []
@@ -212,7 +211,6 @@ def que_checkout():
         )
 
     # Load manga object
-    msID = request.args.get("msID")
     manga: Manga = Manga.load(msID)
 
     chapter_objects = []
@@ -240,8 +238,6 @@ def que_checkout():
         filename = chapter.to_pdf(volume_title=volume_title)
         files_to_send.append(filename)
 
-    print(f"{files_to_send = }")
-
     send_pdfs(
         pdf_files=files_to_send,
     )
@@ -263,10 +259,9 @@ def display_success():
     response.set_cookie("que", json.dumps({}))
     return response
 
-@app.route("/redirect", methods=["POST"])
-def redirect_to():
-    msID = request.args.get("msID")
-    
+
+@app.route("/<string:msID>/redirect", methods=["POST"])
+def redirect_to(msID: str):
     action = request.form.get("action")
     match action:
         case "Home":
@@ -275,6 +270,7 @@ def redirect_to():
             return redirect(url_for("display_que", msID=msID))
         case "Volumes":
             return redirect(url_for("display_manga", msID=msID))
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="192.168.1.18", port=5000)

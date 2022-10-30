@@ -74,7 +74,7 @@
       #loading-text {
         text-align: center;
         color: white;
-        margin-top: 30%;
+        margin-top: 20vh;
       }
 
     .td-btn {
@@ -91,7 +91,7 @@
 <form action="{{ url_for('redirect_to', msID=msID) }}" method="POST">
   <table>
     <tr>
-      <input class="td-btn" type="submit" name="action" value="Home" />
+      <input class="td-btn" type="submit" name="action" value="Back" onclick="history.back();" />
     </tr>
     <tr>
       <input class="td-btn" type="submit" name="action" value="Volumes" />
@@ -115,7 +115,7 @@
           <h2 class="no-margin">Chapter {{ ch }}</h2>
         </td>
         <td class="X small-col">
-          <a href="{{ url_for('que_remove', item_id=vol ~ '-' ~ ch) }}">X</a>
+          <a href="{{ url_for('que_remove', item_que_id=vol ~ '-' ~ ch, msID=msID) }}">X</a>
         </td>
       </tr>
       {% endfor %} {% else %}
@@ -132,7 +132,7 @@
           <h2 class="no-margin">Complete Volume {{ com_vol }}</h2>
         </td>
         <td class="X small-col">
-          <a href="{{ url_for('que_remove', item_id='volume_' ~  com_vol) }}"
+          <a href="{{ url_for('que_remove', item_que_id='volume_' ~  com_vol, msID=msID) }}"
             >X</a
           >
         </td>
