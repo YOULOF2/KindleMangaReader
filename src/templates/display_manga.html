@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block navbar %}
-<form action="{{ url_for('redirect_to', msID=msID) }}" method="POST">
+<form action="{{ url_for('process_redirect', msID=msID) }}" method="POST">
   <table>
     <tr>
       <input class="action-btn" type="submit" name="action" value="Home" />

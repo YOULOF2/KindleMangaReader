@@ -1,165 +1,195 @@
 {% extends "general_base.html" %}
-{% block styles %}
-{{ super() }}
-      table {
-        border-collapse: collapse;
-        width: 100%;
-        table-layout: fixed;
-        text-align: center;
-      }
 
-      td,
-      th {
-        border: 1px solid #dddddd;
-        text-align: left;
-        padding: 8px;
-      }
+{% block styles %} 
+{{ super() }} 
+table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+  text-align: center;
+}
+td, th {
+  border: 1px solid #dddddd;
+  text-align: left;
+  padding: 8px;
+}
+h1 {
+  text-align: center;
+}
+.small-col {
+  width: 10%;
+}
+.X {
+  color: red;
+  text-align: center;
+  font-size: 2.4em;
+}
+.numbering {
+  text-align: center;
+  font-size: 2em;
+}
+.no-margin {
+  margin: 0;
+}
+.align-center {
+  text-align: center;
+}
+.action-btn {
+  width: 100%;
+  background-color: white;
+  color: black;
+  font-size: 50px;
+  padding: 2% 2%;
+  position: relative;
+}
+.action-btn-table {
+  bottom: 0;
+  position: absolute;
+  left: 0;
+}
+.action-btn-table-td {
+  padding: 0;
+  border-width: 0;
+}
+#loading {
+  position: fixed;
+ /* Sit on top of the page content */
+  display: none;
+ /* Hidden by default */
+  width: 100%;
+ /* Full width (cover the whole page) */
+  height: 100%;
+ /* Full height (cover the whole page) */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba( 0, 0, 0, 0.5 );
+ /* Black background with opacity */
+  z-index: 2;
+ /* Specify a stack order in case you're using a different order for other elements */
+  cursor: pointer;
+ /* Add a pointer on hover */
+}
+#loading-text {
+  text-align: center;
+  color: white;
+  margin-top: 20vh;
+}
+.td-btn {
+  width: 50%;
+  display: inline-block;
+  background-color: black;
+  color: white;
+  font-size: 50px;
+}
+.overflow {
+  overflow: auto;
+  height: 300px;
+}
+{% endblock %} 
 
-      h1 {
-        text-align: center;
-      }
-
-      .small-col {
-        width: 10%;
-      }
-
-      .X {
-        color: red;
-        text-align: center;
-        font-size: 2.4em;
-      }
-
-      .numbering {
-        text-align: center;
-        font-size: 2em;
-      }
-
-      .no-margin {
-        margin: 0;
-      }
-
-      .align-center {
-        text-align: center;
-      }
-
-      .action-btn {
-        width: 100%;
-        background-color: white;
-        color: black;
-        font-size: 50px;
-        bottom: 0;
-        position: fixed;
-        padding: 5% 5%;
-      }
-
-      #loading {
-        position: fixed; /* Sit on top of the page content */
-        display: none; /* Hidden by default */
-        width: 100%; /* Full width (cover the whole page) */
-        height: 100%; /* Full height (cover the whole page) */
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(
-          0,
-          0,
-          0,
-          0.5
-        ); /* Black background with opacity */
-        z-index: 2; /* Specify a stack order in case you're using a different order for other elements */
-        cursor: pointer; /* Add a pointer on hover */
-      }
-
-      #loading-text {
-        text-align: center;
-        color: white;
-        margin-top: 20vh;
-      }
-
-    .td-btn {
-      width: 50%; 
-      display: inline-block; 
-      background-color: black;
-      color: white;
-      font-size: 50px; 
-    } 
-    {% endblock %}
-
-
-{% block navbar %}
-<form action="{{ url_for('redirect_to', msID=msID) }}" method="POST">
+{%block navbar %}
+<form action="{{ url_for('process_redirect', msID=msID) }}" method="POST">
   <table>
     <tr>
-      <input class="td-btn" type="submit" name="action" value="Back" onclick="history.back();" />
+      <input
+        class="td-btn"
+        type="submit"
+        name="action"
+        value="Back"
+        onclick="history.back();"
+      />
     </tr>
     <tr>
       <input class="td-btn" type="submit" name="action" value="Volumes" />
     </tr>
   </table>
 </form>
-{% endblock %}
-  
-{% block content %}
-{{ super() }}
-    <h1>Que</h1>
-    <hr />
-    <table>
-      <h3>Chapters</h3>
-      {% if volumes|length != 0 %}
-       {% for vol, ch in volumes|zip(chapters) %}
-      <tr>
-        <td class="numbering small-col">{{ loop.index0+1 }}.</td>
-        <td>
-          <h3 class="no-margin">Volume {{ vol }}</h3>
-          <h2 class="no-margin">Chapter {{ ch }}</h2>
-        </td>
-        <td class="X small-col">
-          <a href="{{ url_for('que_remove', item_que_id=vol ~ '-' ~ ch, msID=msID) }}">X</a>
-        </td>
-      </tr>
-      {% endfor %} {% else %}
-      <h2 class="align-center">-</h2>
-      {% endif %}
-    </table>
-    <hr />
-    <table>
-      <h3>Volumes</h3>
-      {% if complete_volumes|length != 0 %} {% for com_vol in complete_volumes%}
-      <tr>
-        <td class="numbering small-col">{{ loop.index0+1 }}.</td>
-        <td>
-          <h2 class="no-margin">Complete Volume {{ com_vol }}</h2>
-        </td>
-        <td class="X small-col">
-          <a href="{{ url_for('que_remove', item_que_id='volume_' ~  com_vol, msID=msID) }}"
-            >X</a
-          >
-        </td>
-      </tr>
-      {% endfor %} {% else %}
-      <h2 class="align-center">-</h2>
-      {% endif %}
-    </table>
+{% endblock %} {% block content %} {{ super() }}
+<h1>Que</h1>
+<hr />
+<div class="overflow">
+<table>
+  <h3>Chapters</h3>
+  {% if volumes|length != 0 %} {% for vol, ch in volumes|zip(chapters) %}
+  <tr>
+    <td class="numbering small-col">{{ loop.index0+1 }}.</td>
+    <td>
+      <h3 class="no-margin">Volume {{ vol }}</h3>
+      <h2 class="no-margin">Chapter {{ ch }}</h2>
+    </td>
+    <td class="X small-col">
+      <a
+        href="{{ url_for('que_remove', item_que_id=vol ~ '-' ~ ch, msID=msID) }}"
+        >X</a
+      >
+    </td>
+  </tr>
+  {% endfor %} {% else %}
+  <h2 class="align-center">-</h2>
+  {% endif %}
+</table>
+</div>
 
-    <form action="{{ url_for('que_checkout', msID=msID) }}" method="POST">
-      <input
+<hr />
+<div class="overflow">
+<table>
+  <h3>Volumes</h3>
+  {% if complete_volumes|length != 0 %} {% for com_vol in complete_volumes%}
+  <tr>
+    <td class="numbering small-col">{{ loop.index0+1 }}.</td>
+    <td>
+      <h2 class="no-margin">Complete Volume {{ com_vol }}</h2>
+    </td>
+    <td class="X small-col">
+      <a
+        href="{{ url_for('que_remove', item_que_id='volume_' ~  com_vol, msID=msID) }}"
+        >X</a
+      >
+    </td>
+  </tr>
+  {% endfor %} 
+  {% else %}
+  <h2 class="align-center">-</h2>
+  {% endif %}
+</table>
+</div>
+
+
+<form action="{{ url_for('que_checkout', msID=msID) }}" method="POST">
+  <table class="action-btn-table">
+    <tr>
+      <td class="action-btn-table-td">
+        <input
+          class="action-btn"
+          type="submit"
+          name="action"
+          value="Send By Email"
+          onclick="$('#loading').show();"
+        />
+      </td>
+      <td class="action-btn-table-td">
+        <input
         class="action-btn"
         type="submit"
         name="action"
-        value="Checkout"
+        value="Send By USB"
         onclick="$('#loading').show();"
       />
+      </td>
+    </tr>
+  </table>
 
-      <div id="loading">
-        <div id="loading-text">
-          <img src="{{ url_for('static', filename='loading.gif') }}" alt="" />
-          <h2 class="align-center">Processing...<br>Please Wait.</h2>
-        </div>
-      </div>
-    </form>
-    <script
-      type="text/javascript"
-      src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"
-    ></script>
+  <div id="loading">
+    <div id="loading-text">
+      <img src="{{ url_for('static', filename='loading.gif') }}" alt="" />
+      <h2 class="align-center">Processing...<br />Please Wait.</h2>
+    </div>
+  </div>
+</form>
+<script
+  type="text/javascript"
+  src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"
+></script>
 {% endblock %}

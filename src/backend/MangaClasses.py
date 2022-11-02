@@ -6,6 +6,7 @@ import pickle
 from backend.Utils import get_file_size_for, get_request_for, PATH_TO_TEMP, loop
 import requests
 from uuid import uuid4
+from humanize import number
 
 
 class MangaChapter:
@@ -19,7 +20,7 @@ class MangaChapter:
         self.number = chapter_num
         self.id = chapter_id
 
-    def download_imgs(self) -> list[str]:
+    def download_imgs(self, data_saver=True) -> list[str]:
         """Dowloads The Images of the chapter using the MangaDex `at-home` endpoint
 
         Returns:
@@ -34,13 +35,21 @@ class MangaChapter:
 
         chapter_data = request_json["chapter"]
         chapter_hash = chapter_data["hash"]
-        chapter_img_filenames = chapter_data["dataSaver"]
+        if data_saver:
+            chapter_img_filenames = chapter_data["dataSaver"]
+        else:
+            chapter_img_filenames = chapter_data["data"]
 
         files = []
         for chapter_img_filename in loop(
             chapter_img_filenames, description="Dowloading Chapter Images"
         ):
-            image_url = f"{base_url}/data-saver/{chapter_hash}/{chapter_img_filename}"
+            if data_saver:
+                image_url = (
+                    f"{base_url}/data-saver/{chapter_hash}/{chapter_img_filename}"
+                )
+            else:
+                image_url = f"{base_url}/data/{chapter_hash}/{chapter_img_filename}"
 
             response = requests.get(image_url)
             filename = f"{Path(Path(__file__).resolve().parent.parent, 'temp', chapter_img_filename)}"
@@ -54,7 +63,7 @@ class MangaChapter:
     # TODO: Add cover for each chapter using PILLOW and manga cover
     # TODO: Chapter can be separated to multiple pdfs according to the size, if the `inparts` argument is True
     # TODO: Change return type to be either `list` or `str`
-    def to_pdf(self, **kwargs) -> str:
+    def to_pdf(self, volume_title=None, manga_name=None, data_saver=True) -> str:
         """Converts Chapter images to PDF.
         If `volume_title` and `manga_name` variables are found in the kwargs,
         the chapter is processed as standalone with a cover image and the volume title and manga name in the filename.
@@ -67,10 +76,8 @@ class MangaChapter:
         Returns:
             str: PDF filename
         """
-        volume_title = kwargs.get("volume_title")
-        manga_name = kwargs.get("manga_name")
 
-        files_list = self.download_imgs()
+        files_list = self.download_imgs(data_saver=data_saver)
 
         pdf = FPDF()
         for file in loop(files_list, description="Adding Chapter Images to PDF"):
@@ -152,7 +159,7 @@ class MangaVolume:
 
     # TODO: for each volume part add a cover page with volume cover and PILOOW text
     # TODO: Change return type to support `str` or `list`
-    def to_pdf(self, in_parts=True) -> list[str]:
+    def to_pdf(self, manga_title: str, in_parts=True, data_saver=True) -> list[str]:
         """Converts the volume object to PDFs
 
         Args:
@@ -206,11 +213,20 @@ class MangaVolume:
                     f"{str(PATH_TO_TEMP)}\\volume {self.title} cover.pdf"
                 )
                 cover_pdf.output(cover_pdf_filename, "F")
+                break
+        else:
+            # TODO: Add proper path to file not absloute file path
+            cover_pdf_filename = str(
+                Path(
+                    "C:\\Users\\Asus\\Programming\\PythonProjects\\KindleMangaReader\\src\\static\\MAnga Cover Not Found.pdf"
+                )
+            )
+            print("Cover not found")
 
         for chapter in loop(
             self.chapters, description="Converting Chapters to PDFs", colour="RED"
         ):
-            all_pdfs.insert(0, chapter.to_pdf())
+            all_pdfs.insert(0, chapter.to_pdf(data_saver=data_saver))
 
         # Add cover image pdf to all_pdfs
         all_pdfs.insert(0, cover_pdf_filename)
@@ -218,28 +234,53 @@ class MangaVolume:
         all_volume_parts = set([])
         total_file_size = 0
         merger = PdfMerger()
-        for volume_part, pdf in loop(
-            enumerate(all_pdfs, start=1), description="Creating Volume"
-        ):
-            if total_file_size <= 11 and in_parts:
-                total_file_size += get_file_size_for(pdf)
+        if in_parts:
+            for volume_part, pdf in loop(
+                enumerate(all_pdfs, start=1), description="Creating Volume"
+            ):
+                if total_file_size <= 11:
+                    total_file_size += get_file_size_for(pdf)
 
+                    merger.append(pdf)
+                else:
+                    filename = (
+                        f"{PATH_TO_TEMP}\\Volume {self.title} Part {volume_part}.pdf"
+                    )
+                    merger.write(filename)
+                    all_volume_parts.add(filename)
+
+                    merger.close()
+                    merger = PdfMerger()
+
+                    total_file_size = 0
+
+                    merger.append(pdf)
+                    total_file_size += get_file_size_for(pdf)
+
+                if self.title == "UnGrpd":
+                    filename = f"{PATH_TO_TEMP}\\{manga_title} {self.title} Volume Part {volume_part}.pdf"
+                else:
+                    filename = f"{PATH_TO_TEMP}\\{manga_title} {number.ordinal(self.title)} Volume Part {volume_part}.pdf"
+                
+        else:
+            for pdf in loop(all_pdfs, description="Creating Volume"):
                 merger.append(pdf)
+
+            if self.title == "UnGrpd":
+                filename = f"{PATH_TO_TEMP}\\{manga_title} {self.title} Volume.pdf"
             else:
-                filename = f"{PATH_TO_TEMP}\\Volume {self.title} Part {volume_part}.pdf"
-                merger.write(filename)
-                all_volume_parts.add(filename)
+                filename = f"{PATH_TO_TEMP}\\{manga_title} {number.ordinal(self.title)} Volume.pdf"
 
-                merger.close()
-                merger = PdfMerger()
+        pdf_title = filename.split("\\")[-1].removesuffix(".pdf")
 
-                total_file_size = 0
-
-                merger.append(pdf)
-                total_file_size += get_file_size_for(pdf)
-
-        filename = f"{PATH_TO_TEMP}\\Volume {self.title} Part {volume_part}.pdf"
+        merger.add_metadata(
+            {
+                "/Author": "KinldeMangaReader",
+                "/Title": pdf_title,
+            }
+        )
         merger.write(filename)
+
         all_volume_parts.add(filename)
 
         merger.close()
@@ -250,7 +291,6 @@ class MangaVolume:
         return f"{self.title = }"
 
 
-# TODO: Add doc strings to Manga class and its methods
 class Manga:
     def __init__(
         self,

@@ -1,5 +1,5 @@
 from time import time
-from backend import get_manga_by_id, Manga, send_pdfs
+from backend import get_manga_by_id, Manga, send_pdfs, send_by_usb
 from flask import (
     Flask,
     render_template,
@@ -16,6 +16,7 @@ from pprint import pprint
 app = Flask(__name__)
 app.secret_key = "123secret"
 app.jinja_env.filters["zip"] = zip
+
 
 @app.after_request
 def after_request(response):
@@ -38,6 +39,9 @@ def index():
 @app.route("/get_manga", methods=["POST"])
 def get_manga():
     text = request.form["text"]
+    if "http" in text:
+        text = text.removeprefix("https://mangadex.org/title/")
+        text = text.split("/")[0]
     # text = "737a846b-2e67-4d63-9f7e-f54b3beebac4"
     manga = get_manga_by_id(text)
     msID = manga.save()
@@ -227,20 +231,32 @@ def que_checkout(msID: str):
                             volume_objects_titles.append(volume_obj.title)
 
                             chapter_objects.append(chapter_obj)
-
+    
+    submit_type = request.form.get("action")
+        
+    send_by_email = False if submit_type == "Send By USB" else True
+    print(f"{send_by_email = }")
+        
     for volume_obj in manga.volumes:
         for complete_volume_title in complete_volumes_titles:
             if complete_volume_title == volume_obj.title:
-                volume_files = volume_obj.to_pdf()
+                print(f"Creating volume {volume_obj.title}")
+                volume_files = volume_obj.to_pdf(manga_title=manga.title, in_parts=send_by_email, data_saver=send_by_email)
                 files_to_send += volume_files
 
     for chapter, volume_title in zip(chapter_objects, volume_objects_titles):
-        filename = chapter.to_pdf(volume_title=volume_title)
+        filename = chapter.to_pdf(volume_title=volume_title, manga_name=manga.title)
         files_to_send.append(filename)
 
-    send_pdfs(
-        pdf_files=files_to_send,
-    )
+    if send_by_email:
+        send_pdfs(
+            pdf_files=files_to_send,
+        )
+    else:
+        send_by_usb(
+            drive_title="Kindle",
+            files=files_to_send,
+        )
 
     processing_end = time()
 
@@ -249,7 +265,7 @@ def que_checkout(msID: str):
     return redirect(url_for("display_success", processing_time=processing_time))
 
 
-@app.route("/success", methods=["POST"])
+@app.route("/success", methods=["GET"])
 def display_success():
     processing_time = request.args.get("processing_time")
 
@@ -261,7 +277,7 @@ def display_success():
 
 
 @app.route("/<string:msID>/redirect", methods=["POST"])
-def redirect_to(msID: str):
+def process_redirect(msID: str):
     action = request.form.get("action")
     match action:
         case "Home":
