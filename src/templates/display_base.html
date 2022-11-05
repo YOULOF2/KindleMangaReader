@@ -22,7 +22,7 @@
 {% block content %}
 <h1 style="text-align: center">{{ title }}</h1>
 <h6 style="text-align: center">{{ id }}</h6>
-<p>{{ description }}</p>
+<p>{{ description|safe }}</p>
 <table class="volumes-table">
   <tr>
     <td>Status</td>

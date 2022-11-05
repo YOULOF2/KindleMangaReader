@@ -38,14 +38,9 @@ h1 {
   width: 100%;
   background-color: white;
   color: black;
-  font-size: 50px;
+  font-size: 150%;
   padding: 2% 2%;
   position: relative;
-}
-.action-btn-table {
-  bottom: 0;
-  position: absolute;
-  left: 0;
 }
 .action-btn-table-td {
   padding: 0;
@@ -81,12 +76,72 @@ h1 {
   display: inline-block;
   background-color: black;
   color: white;
-  font-size: 50px;
+  font-size: 250%;
 }
-.overflow {
-  overflow: auto;
-  height: 300px;
+
+/* The switch - the box around the slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 34px;
 }
+/* Hide default HTML checkbox */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+/* The slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: black;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+input:checked + .slider {
+  background-color: #2196F3;
+}
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+input:checked + .slider:before {
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(26px);
+}
+
+.switch-div {
+  text-align: center;
+}
+
+#action-form {
+  position: sticky;
+  bottom: 0px;
+  background-color: white;
+  z-index:1;
+}
+
+body {
+  height: 100%;
+}
+
 {% endblock %} 
 
 {%block navbar %}
@@ -106,10 +161,11 @@ h1 {
     </tr>
   </table>
 </form>
-{% endblock %} {% block content %} {{ super() }}
+{% endblock %} 
+{% block content %}
+ {{ super() }}
 <h1>Que</h1>
 <hr />
-<div class="overflow">
 <table>
   <h3>Chapters</h3>
   {% if volumes|length != 0 %} {% for vol, ch in volumes|zip(chapters) %}
@@ -130,10 +186,8 @@ h1 {
   <h2 class="align-center">-</h2>
   {% endif %}
 </table>
-</div>
 
 <hr />
-<div class="overflow">
 <table>
   <h3>Volumes</h3>
   {% if complete_volumes|length != 0 %} {% for com_vol in complete_volumes%}
@@ -154,11 +208,27 @@ h1 {
   <h2 class="align-center">-</h2>
   {% endif %}
 </table>
-</div>
 
 
-<form action="{{ url_for('que_checkout', msID=msID) }}" method="POST">
-  <table class="action-btn-table">
+<form action="{{ url_for('que_checkout', msID=msID) }}" method="POST" id="action-form">
+  <table>
+    <tr>
+      <td>
+        <h2 class="align-center">As MOBI?</h2>
+      </td>
+      <td>
+        <div class="switch-div">
+          <label class="switch">
+            <input
+              type="checkbox"
+              name="mobi"
+            checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </td>
+  </tr>
+
     <tr>
       <td class="action-btn-table-td">
         <input

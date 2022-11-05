@@ -1,0 +1,13 @@
+@charset "utf-8";
+
+a {
+    text-decoration: none;
+}
+
+#toc img {
+    max-width: 25vw;
+}
+
+#toc ol {
+    list-style-type: none;
+}

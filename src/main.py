@@ -11,7 +11,6 @@ from flask import (
 )
 import json
 import itertools
-from pprint import pprint
 
 app = Flask(__name__)
 app.secret_key = "123secret"
@@ -103,8 +102,6 @@ def display_volume(msID: str, title: str):
 def display_que(msID: str):
     que_dict: list[str] = json.loads(request.cookies.get("que"))
     que = list(itertools.chain.from_iterable(que_dict.values()))
-
-    pprint(que_dict)
 
     volumes = []
     chapters = []
@@ -233,19 +230,27 @@ def que_checkout(msID: str):
                             chapter_objects.append(chapter_obj)
     
     submit_type = request.form.get("action")
+    as_mobi = request.form.get("mobi")
         
     send_by_email = False if submit_type == "Send By USB" else True
-    print(f"{send_by_email = }")
         
     for volume_obj in manga.volumes:
         for complete_volume_title in complete_volumes_titles:
             if complete_volume_title == volume_obj.title:
                 print(f"Creating volume {volume_obj.title}")
-                volume_files = volume_obj.to_pdf(manga_title=manga.title, in_parts=send_by_email, data_saver=send_by_email)
-                files_to_send += volume_files
+                if not as_mobi:
+                    volume_files = volume_obj.to_pdf(data_saver=send_by_email)
+                    files_to_send += volume_files
+                else:
+                    volume_files = [volume_obj.to_mobi(data_saver=send_by_email)]
+                    files_to_send.insert(0, volume_files)
+                
 
     for chapter, volume_title in zip(chapter_objects, volume_objects_titles):
-        filename = chapter.to_pdf(volume_title=volume_title, manga_name=manga.title)
+        if not as_mobi:
+            filename = chapter.to_pdf()
+        else:
+            filename = chapter.to_mobi()
         files_to_send.append(filename)
 
     if send_by_email:
@@ -286,6 +291,8 @@ def process_redirect(msID: str):
             return redirect(url_for("display_que", msID=msID))
         case "Volumes":
             return redirect(url_for("display_manga", msID=msID))
+        case "Back":
+            return redirect(url_for("display_que", msID=msID))
 
 
 if __name__ == "__main__":

@@ -1,7 +1,9 @@
-from backend.MangaClasses import Manga, MangaVolume, MangaChapter
-from backend.Utils import clear_temp, get_request_for
+from src.backend.MangaClasses import Manga, MangaVolume, MangaChapter
+from src.backend.Utils import clear_temp, get_request_for
+from pathlib import Path
 
 __all__ = ["get_manga_by_id"]
+
 
 def get_manga_by_id(manga_id: str) -> Manga:
     # # Clear temp folder
@@ -35,36 +37,61 @@ def get_manga_by_id(manga_id: str) -> Manga:
     # All volumes
     manga_volumes = aggregated_manga_data["volumes"]
 
+    manga = Manga()
     # all manga volumes as a list of class MangaVolume
     all_volumes = []
-    for volume_title, vol_ch_data in manga_volumes.items():
+
+    # Gets Cover for particular volume
+    all_covers = get_request_for(
+        f"https://api.mangadex.org/cover?"
+        f"limit=100&manga%5B%5D={manga_id}&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5Bvolume%5D=asc"
+    )
+    for volume_title, chapter_data in manga_volumes.items():
+        volume = MangaVolume()
 
         # Get chapters for each volume
         all_chapters = []
-        vol_chs = vol_ch_data["chapters"]
+        vol_chs = chapter_data["chapters"]
         for _, chapter_data in vol_chs.items():
             all_chapters.append(
                 MangaChapter(
-                    chapter_num=chapter_data["chapter"],
-                    chapter_id=chapter_data["id"],
+                    number=chapter_data["chapter"],
+                    id=chapter_data["id"],
+                    manga_obj=manga,
+                    volume_obj=volume,
                 )
             )
+
+        # If volume is `none` set volume title to `UnGrpd`
         if volume_title == "none":
             volume_title = "UnGrpd"
-            
-        all_volumes.append(
-            MangaVolume(
-                manga_id=manga_id,
-                volume_title=volume_title,
-                chapters=all_chapters,
-            )
-        )
 
-    return Manga(
-        id=manga_id,
-        title=manga_title,
-        description=manga_description,
-        status=manga_status,
-        manga_cover=manga_cover,
-        volumes=all_volumes,
-    )
+        for cover in all_covers["data"]:
+            if cover["attributes"]["volume"] == volume_title:
+                hash_cover_filename = cover["attributes"]["fileName"]
+
+                manga_cover_url = (
+                    f"https://mangadex.org/covers/{manga_id}/{hash_cover_filename}"
+                )
+                break
+
+        else:
+            manga_cover_url = str(
+                Path(Path(__file__).parent, "cnf.jpg")
+                
+            )
+        volume.title = volume_title
+        volume.chapters = all_chapters
+        volume.cover = manga_cover_url
+        volume.manga = manga
+
+        all_volumes.append(volume)
+
+    manga.id = manga_id
+    manga.title = manga_title
+    manga.description = manga_description
+    manga.status = manga_status
+    manga.cover = manga_cover
+    manga.volumes = all_volumes
+
+    return manga

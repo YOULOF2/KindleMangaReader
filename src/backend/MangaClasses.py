@@ -3,30 +3,212 @@ from fpdf import FPDF
 from PyPDF2 import PdfMerger
 from pathlib import Path
 import pickle
-from backend.Utils import get_file_size_for, get_request_for, PATH_TO_TEMP, loop
+from src.backend.Utils import get_file_size_for, get_request_for, PATH_TO_TEMP, loop
 import requests
 from uuid import uuid4
 from humanize import number
+import os
+from src.backend.ConvertToMOBI import list_to_mobi
+
+
+class Manga:
+    def __init__(
+        self,
+        id: str = None,
+        title: str = None,
+        description: str = None,
+        status: str = None,
+        cover: str = None,
+        volumes: list = None,
+    ) -> None:
+        self.id = id
+        self.title = title
+        self.description = description
+        self.status = status
+        self.cover = cover
+        self.volumes = volumes
+
+    def __str__(self):
+        return f"{self.title = }\n{self.description = }\n{self.status = }\n{self.cover = }\nNumber of volumes = {len(self.volumes)}"
+
+    def save(self) -> str:
+        object_id = str(uuid4()).split("-")[0]
+        with open(f"{PATH_TO_TEMP}\\{object_id}.manga", "wb") as pickle_file:
+            pickle.dump(self, pickle_file)
+
+        return object_id
+
+    @classmethod
+    def load(cls, object_id: str):
+        with open(f"{PATH_TO_TEMP}\\{object_id}.manga", "rb") as pickle_file:
+            instance = pickle.load(pickle_file)
+        return instance
+
+
+class MangaVolume:
+    def __init__(
+        self,
+        title: str = None,
+        chapters: list = None,
+        cover: str = None,
+        manga: Manga = None,
+    ) -> None:
+        self.title = title
+        self.chapters = chapters
+        self.cover = cover
+        self.manga = manga
+
+    def to_pdf(self, in_parts=True, data_saver=True) -> list[str]:
+        all_pdfs = []
+
+        if "https://" in self.cover:
+            response = requests.get(self.cover)
+            hash_cover_filename = self.cover.split("/")[-1]
+            cover_filename = str(Path(PATH_TO_TEMP, hash_cover_filename))
+
+            # Dowloads cover as image
+            with open(cover_filename, "wb") as file:
+                file.write(response.content)
+
+        else:
+            cover_filename = self.cover
+
+        # Converts Cover image to pdf
+        cover_pdf = FPDF()
+
+        cover_image = Image.open(cover_filename)
+        cover_width, cover_height = cover_image.size
+
+        # convert pixel in mm with 1px=0.264583 mm
+        cover_width, cover_height = float(cover_width * 0.264583), float(
+            cover_height * 0.264583
+        )
+
+        #  make sure image size is not greater than the pdf format size
+        cover_width = cover_width if cover_width < 210 else 210
+        cover_height = cover_height if cover_height < 297 else 297
+
+        cover_pdf.add_page()
+
+        cover_pdf.image(cover_filename, 0, 0, cover_width, cover_height)
+
+        cover_pdf_filename = f"{str(PATH_TO_TEMP)}\\volume {self.title} cover.pdf"
+        cover_pdf.output(cover_pdf_filename, "F")
+
+        for chapter in loop(
+            self.chapters, description="Converting Chapters to PDFs", colour="RED"
+        ):
+            all_pdfs.insert(0, chapter.to_pdf(data_saver=data_saver))
+
+        # Add cover image pdf to all_pdfs
+        all_pdfs.insert(0, cover_pdf_filename)
+
+        all_volume_parts = set([])
+        total_file_size = 0
+        merger = PdfMerger()
+        if in_parts:
+            for volume_part, pdf in loop(
+                enumerate(all_pdfs, start=1), description="Creating Volume"
+            ):
+                if total_file_size <= 11:
+                    total_file_size += get_file_size_for(pdf)
+
+                    merger.append(pdf)
+                else:
+                    filename = (
+                        f"{PATH_TO_TEMP}\\Volume {self.title} Part {volume_part}.pdf"
+                    )
+                    merger.write(filename)
+                    all_volume_parts.add(filename)
+
+                    merger.close()
+                    merger = PdfMerger()
+
+                    total_file_size = 0
+
+                    merger.append(pdf)
+                    total_file_size += get_file_size_for(pdf)
+
+                if self.title == "UnGrpd":
+                    filename = f"{PATH_TO_TEMP}\\{self.manga.title} {self.title} Volume Part {volume_part}.pdf"
+                else:
+                    filename = f"{PATH_TO_TEMP}\\{self.manga.title} {number.ordinal(self.title)} Volume Part {volume_part}.pdf"
+
+        else:
+            for pdf in loop(all_pdfs, description="Creating Volume"):
+                merger.append(pdf)
+
+            if self.title == "UnGrpd":
+                filename = f"{PATH_TO_TEMP}\\{self.manga.title} {self.title} Volume.pdf"
+            else:
+                filename = f"{PATH_TO_TEMP}\\{self.manga.title} {number.ordinal(self.title)} Volume.pdf"
+
+        pdf_title = filename.split("\\")[-1].removesuffix(".pdf")
+
+        merger.add_metadata(
+            {
+                "/Author": "KinldeMangaReader",
+                "/Title": pdf_title,
+            }
+        )
+        merger.write(filename)
+
+        all_volume_parts.add(filename)
+
+        merger.close()
+
+        return list(all_volume_parts)
+
+    def to_mobi(self, data_saver=True) -> str:
+        all_images = []
+
+        for chapter in self.chapters:
+            chapter_images = chapter.download_imgs(data_saver=data_saver)
+            all_images += chapter_images
+
+        if "http" in self.cover:
+            response = requests.get(self.cover)
+            hash_cover_filename = self.cover.split("/")[-1]
+            cover_filename = str(Path(PATH_TO_TEMP, hash_cover_filename))
+
+            # Dowloads cover as image
+            with open(cover_filename, "wb") as file:
+                file.write(response.content)
+        else:
+            cover_filename = self.cover
+
+        all_images.insert(0, cover_filename)
+
+        if self.title == "UnGrpd":
+            filename = f"{self.manga.title} {self.title} Volume"
+        else:
+            filename = f"{self.manga.title} {number.ordinal(self.title)} Volume"
+
+        mobi_path = list_to_mobi(
+            input_list=all_images,
+            mobi_name=filename,
+        )
+
+        return mobi_path
+
+    def __str__(self):
+        return f"{self.title = }"
 
 
 class MangaChapter:
-    def __init__(self, chapter_num: float, chapter_id: str) -> None:
-        """Contains ID and Number of Chapter
-
-        Args:
-            chapter_num (float): The number of the chapter
-            chapter_id (str): The ID of the chapter from MangaDex
-        """
-        self.number = chapter_num
-        self.id = chapter_id
+    def __init__(
+        self,
+        number: float,
+        id: str,
+        manga_obj: Manga,
+        volume_obj: MangaVolume,
+    ) -> None:
+        self.number = number
+        self.id = id
+        self.manga = manga_obj
+        self.volume = volume_obj
 
     def download_imgs(self, data_saver=True) -> list[str]:
-        """Dowloads The Images of the chapter using the MangaDex `at-home` endpoint
-
-        Returns:
-            list[str]: List of all images
-        """
-
         request_json = get_request_for(
             f"https://api.mangadex.org/at-home/server/{self.id}"
         )
@@ -60,23 +242,7 @@ class MangaChapter:
 
         return files
 
-    # TODO: Add cover for each chapter using PILLOW and manga cover
-    # TODO: Chapter can be separated to multiple pdfs according to the size, if the `inparts` argument is True
-    # TODO: Change return type to be either `list` or `str`
-    def to_pdf(self, volume_title=None, manga_name=None, data_saver=True) -> str:
-        """Converts Chapter images to PDF.
-        If `volume_title` and `manga_name` variables are found in the kwargs,
-        the chapter is processed as standalone with a cover image and the volume title and manga name in the filename.
-
-        Args:
-            **kwargs (dict):
-                    volume_title (str): Volume Title
-                    manga_name (str): Manga Name
-
-        Returns:
-            str: PDF filename
-        """
-
+    def to_pdf(self, data_saver=True, standalone=False) -> str:
         files_list = self.download_imgs(data_saver=data_saver)
 
         pdf = FPDF()
@@ -124,10 +290,8 @@ class MangaChapter:
 
             pdf.image(file, 0, 0, width, height)
 
-        if volume_title:
-            pdf_filename = (
-                f"{str(PATH_TO_TEMP)}\\{manga_name} v{volume_title} ch{self.number}.pdf"
-            )
+        if standalone:
+            pdf_filename = f"{str(PATH_TO_TEMP)}\\{self.manga.title} v{self.volume.title} ch{self.number}.pdf"
         else:
             pdf_filename = f"{str(PATH_TO_TEMP)}\\Chapter {self.number}.pdf"
 
@@ -135,214 +299,15 @@ class MangaChapter:
 
         return pdf_filename
 
+    def to_mobi(self, data_saver=True) -> str:
+        files_list = self.download_imgs(data_saver=data_saver)
+
+        mobi_path = list_to_mobi(
+            input_list=files_list,
+            mobi_name=f"{self.manga.title} v{self.volume.title} ch{self.number}",
+        )
+
+        return mobi_path
+
     def __str__(self):
         return f"{self.number = }\n{self.id = }"
-
-
-class MangaVolume:
-    def __init__(
-        self,
-        manga_id: str,
-        volume_title: str,
-        chapters: list[MangaChapter],
-    ) -> None:
-        """Conatins the manga id, volume title, and the list of chapters for a manga volume.
-
-        Args:
-            manga_id (str): Manga ID from MangaDex
-            volume_title (str): The title of the volume
-            chapters (list[MangaChapter]): List of `MangaChapter` objects.
-        """
-        self.manga_id = manga_id
-        self.title = volume_title
-        self.chapters = chapters
-
-    # TODO: for each volume part add a cover page with volume cover and PILOOW text
-    # TODO: Change return type to support `str` or `list`
-    def to_pdf(self, manga_title: str, in_parts=True, data_saver=True) -> list[str]:
-        """Converts the volume object to PDFs
-
-        Args:
-            in_parts (bool): `True` by default. Set to `False` to make volume into one PDF only.
-
-        Returns:
-            list (str): List of PDF parts
-        """
-        all_pdfs = []
-
-        # Gets Cover for particular volume
-        all_covers = get_request_for(
-            f"https://api.mangadex.org/cover?"
-            f"limit=100&manga%5B%5D={self.manga_id}&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5Bvolume%5D=asc"
-        )
-
-        for cover in all_covers["data"]:
-            if cover["attributes"]["volume"] == self.title:
-                hash_cover_filename = cover["attributes"]["fileName"]
-
-                manga_cover_url = (
-                    f"https://mangadex.org/covers/{self.manga_id}/{hash_cover_filename}"
-                )
-
-                response = requests.get(manga_cover_url)
-                cover_filename = f"{Path(PATH_TO_TEMP, hash_cover_filename)}"
-                # Dowloads cover as image
-                with open(cover_filename, "wb") as file:
-                    file.write(response.content)
-
-                # Converts Cover image to pdf
-                cover_pdf = FPDF()
-
-                cover_image = Image.open(cover_filename)
-                cover_width, cover_height = cover_image.size
-
-                # convert pixel in mm with 1px=0.264583 mm
-                cover_width, cover_height = float(cover_width * 0.264583), float(
-                    cover_height * 0.264583
-                )
-
-                #  make sure image size is not greater than the pdf format size
-                cover_width = cover_width if cover_width < 210 else 210
-                cover_height = cover_height if cover_height < 297 else 297
-
-                cover_pdf.add_page()
-
-                cover_pdf.image(cover_filename, 0, 0, cover_width, cover_height)
-
-                cover_pdf_filename = (
-                    f"{str(PATH_TO_TEMP)}\\volume {self.title} cover.pdf"
-                )
-                cover_pdf.output(cover_pdf_filename, "F")
-                break
-        else:
-            # TODO: Add proper path to file not absloute file path
-            cover_pdf_filename = str(
-                Path(
-                    "C:\\Users\\Asus\\Programming\\PythonProjects\\KindleMangaReader\\src\\static\\MAnga Cover Not Found.pdf"
-                )
-            )
-            print("Cover not found")
-
-        for chapter in loop(
-            self.chapters, description="Converting Chapters to PDFs", colour="RED"
-        ):
-            all_pdfs.insert(0, chapter.to_pdf(data_saver=data_saver))
-
-        # Add cover image pdf to all_pdfs
-        all_pdfs.insert(0, cover_pdf_filename)
-
-        all_volume_parts = set([])
-        total_file_size = 0
-        merger = PdfMerger()
-        if in_parts:
-            for volume_part, pdf in loop(
-                enumerate(all_pdfs, start=1), description="Creating Volume"
-            ):
-                if total_file_size <= 11:
-                    total_file_size += get_file_size_for(pdf)
-
-                    merger.append(pdf)
-                else:
-                    filename = (
-                        f"{PATH_TO_TEMP}\\Volume {self.title} Part {volume_part}.pdf"
-                    )
-                    merger.write(filename)
-                    all_volume_parts.add(filename)
-
-                    merger.close()
-                    merger = PdfMerger()
-
-                    total_file_size = 0
-
-                    merger.append(pdf)
-                    total_file_size += get_file_size_for(pdf)
-
-                if self.title == "UnGrpd":
-                    filename = f"{PATH_TO_TEMP}\\{manga_title} {self.title} Volume Part {volume_part}.pdf"
-                else:
-                    filename = f"{PATH_TO_TEMP}\\{manga_title} {number.ordinal(self.title)} Volume Part {volume_part}.pdf"
-                
-        else:
-            for pdf in loop(all_pdfs, description="Creating Volume"):
-                merger.append(pdf)
-
-            if self.title == "UnGrpd":
-                filename = f"{PATH_TO_TEMP}\\{manga_title} {self.title} Volume.pdf"
-            else:
-                filename = f"{PATH_TO_TEMP}\\{manga_title} {number.ordinal(self.title)} Volume.pdf"
-
-        pdf_title = filename.split("\\")[-1].removesuffix(".pdf")
-
-        merger.add_metadata(
-            {
-                "/Author": "KinldeMangaReader",
-                "/Title": pdf_title,
-            }
-        )
-        merger.write(filename)
-
-        all_volume_parts.add(filename)
-
-        merger.close()
-
-        return list(all_volume_parts)
-
-    def __str__(self):
-        return f"{self.title = }"
-
-
-class Manga:
-    def __init__(
-        self,
-        id: str,
-        title: str,
-        description: str,
-        status: str,
-        manga_cover: str,
-        volumes: list[MangaVolume],
-    ) -> None:
-        """Stores manga data
-
-        Args:
-            id (str): ID from MangaDex
-            title (str): The title of manga
-            description (str): Description of the manga
-            status (str): status of the manga; `ongoing`, `cancelled` or `haitus`
-            manga_cover (str): Coover url of the manga
-            volumes (list[MangaVolume]): List of `MangaVolume` objects
-        """
-        self.id = id
-        self.title = title
-        self.description = description
-        self.status = status
-        self.cover = manga_cover
-        self.volumes = volumes
-
-    def __str__(self):
-        return f"{self.title = }\n{self.description = }\n{self.status = }\n{self.year = }\n{self.cover = }\nNumber of volumes = {len(self.volumes)}"
-
-    def save(self) -> str:
-        """Save manga object to file
-
-        Returns:
-            object-id (str): ID of manga class
-        """
-        object_id = str(uuid4()).split("-")[0]
-        with open(f"{PATH_TO_TEMP}\\{object_id}.manga", "wb") as pickle_file:
-            pickle.dump(self, pickle_file)
-
-        return object_id
-
-    @classmethod
-    def load(cls, object_id: str):
-        """load manga object from file
-
-        Args:
-            object_id (str): ID of manga object save
-
-        Returns:
-            Manga (obj): Object instance of Manga class
-        """
-        with open(f"{PATH_TO_TEMP}\\{object_id}.manga", "rb") as pickle_file:
-            instance = pickle.load(pickle_file)
-        return instance
