@@ -12,6 +12,8 @@ from flask import (
 import json
 import itertools
 
+from pprint import pprint
+
 app = Flask(__name__)
 app.secret_key = "123secret"
 app.jinja_env.filters["zip"] = zip
@@ -240,10 +242,10 @@ def que_checkout(msID: str):
                 print(f"Creating volume {volume_obj.title}")
                 if not as_mobi:
                     volume_files = volume_obj.to_pdf(data_saver=send_by_email)
-                    files_to_send += volume_files
                 else:
                     volume_files = [volume_obj.to_mobi(data_saver=send_by_email)]
-                    files_to_send.insert(0, volume_files)
+                
+                files_to_send += volume_files
                 
 
     for chapter, volume_title in zip(chapter_objects, volume_objects_titles):

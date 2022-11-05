@@ -164,7 +164,7 @@ class MangaVolume:
 
         for chapter in self.chapters:
             chapter_images = chapter.download_imgs(data_saver=data_saver)
-            all_images += chapter_images
+            all_images = chapter_images + all_images
 
         if "http" in self.cover:
             response = requests.get(self.cover)
