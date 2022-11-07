@@ -12,7 +12,7 @@ from flask import (
 import json
 import itertools
 
-from pprint import pprint
+from loguru import logger
 
 app = Flask(__name__)
 app.secret_key = "123secret"
@@ -239,7 +239,7 @@ def que_checkout(msID: str):
     for volume_obj in manga.volumes:
         for complete_volume_title in complete_volumes_titles:
             if complete_volume_title == volume_obj.title:
-                print(f"Creating volume {volume_obj.title}")
+                logger.info(f"Creating volume {volume_obj.title}")
                 if not as_mobi:
                     volume_files = volume_obj.to_pdf(data_saver=send_by_email)
                 else:
@@ -248,7 +248,7 @@ def que_checkout(msID: str):
                 files_to_send += volume_files
                 
 
-    for chapter, volume_title in zip(chapter_objects, volume_objects_titles):
+    for chapter in chapter_objects:
         if not as_mobi:
             filename = chapter.to_pdf()
         else:
@@ -268,6 +268,7 @@ def que_checkout(msID: str):
     processing_end = time()
 
     processing_time = round((processing_end - processing_start) / 60, 1)
+    logger.info(f"Processing has taken {processing_time} minutes")
 
     return redirect(url_for("display_success", processing_time=processing_time))
 
@@ -298,6 +299,6 @@ def process_redirect(msID: str):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="192.168.1.18", port=5000)
+    app.run(debug=False, host="192.168.1.18", port=5000)
 
     # 89393959-9749-4b7d-b199-cf25f1a52d86

@@ -9,7 +9,7 @@ def send_by_usb(drive_title: str, files: list[str]):
     for drive in drives:
         drive_name = win32api.GetVolumeInformation(drive)[0]
         if drive_name == drive_title or drive_name == drive_title.upper():            
-            for file in loop(files, description="Transfering file to kindle"):
+            for file in loop(files, desc="Transfering file to kindle"):
                 filename = file.split("\\")[-1]
                 path_to_document = f"{drive}documents\\{filename}"
                 shutil.copy2(file, path_to_document)

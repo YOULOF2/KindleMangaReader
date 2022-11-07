@@ -4,11 +4,14 @@ from PyPDF2 import PdfMerger
 from pathlib import Path
 import pickle
 from src.backend.Utils import get_file_size_for, get_request_for, PATH_TO_TEMP, loop
-import requests
 from uuid import uuid4
 from humanize import number
-import os
+import validators
 from src.backend.ConvertToMOBI import list_to_mobi
+from uuid import uuid4
+
+import grequests
+import requests
 
 
 class Manga:
@@ -96,7 +99,7 @@ class MangaVolume:
         cover_pdf.output(cover_pdf_filename, "F")
 
         for chapter in loop(
-            self.chapters, description="Converting Chapters to PDFs", colour="RED"
+            self.chapters, desc="Converting Chapters to PDFs", colour="RED"
         ):
             all_pdfs.insert(0, chapter.to_pdf(data_saver=data_saver))
 
@@ -108,7 +111,7 @@ class MangaVolume:
         merger = PdfMerger()
         if in_parts:
             for volume_part, pdf in loop(
-                enumerate(all_pdfs, start=1), description="Creating Volume"
+                enumerate(all_pdfs, start=1), desc="Creating Volume"
             ):
                 if total_file_size <= 11:
                     total_file_size += get_file_size_for(pdf)
@@ -135,7 +138,7 @@ class MangaVolume:
                     filename = f"{PATH_TO_TEMP}\\{self.manga.title} {number.ordinal(self.title)} Volume Part {volume_part}.pdf"
 
         else:
-            for pdf in loop(all_pdfs, description="Creating Volume"):
+            for pdf in loop(all_pdfs, desc="Creating Volume"):
                 merger.append(pdf)
 
             if self.title == "UnGrpd":
@@ -162,11 +165,11 @@ class MangaVolume:
     def to_mobi(self, data_saver=True) -> str:
         all_images = []
 
-        for chapter in self.chapters:
+        for chapter in loop(self.chapters, desc=f"Downloading Images for {self.title} volume"):
             chapter_images = chapter.download_imgs(data_saver=data_saver)
             all_images = chapter_images + all_images
 
-        if "http" in self.cover:
+        if validators.url(self.cover):
             response = requests.get(self.cover)
             hash_cover_filename = self.cover.split("/")[-1]
             cover_filename = str(Path(PATH_TO_TEMP, hash_cover_filename))
@@ -218,26 +221,34 @@ class MangaChapter:
         chapter_data = request_json["chapter"]
         chapter_hash = chapter_data["hash"]
         if data_saver:
-            chapter_img_filenames = chapter_data["dataSaver"]
+            chapter_image_filenames = chapter_data["dataSaver"]
         else:
-            chapter_img_filenames = chapter_data["data"]
+            chapter_image_filenames = chapter_data["data"]
 
         files = []
-        for chapter_img_filename in loop(
-            chapter_img_filenames, description="Dowloading Chapter Images"
-        ):
+        request_urls = []
+        for chapter_image_filename in chapter_image_filenames:
             if data_saver:
                 image_url = (
-                    f"{base_url}/data-saver/{chapter_hash}/{chapter_img_filename}"
+                    f"{base_url}/data-saver/{chapter_hash}/{chapter_image_filename}"
                 )
             else:
-                image_url = f"{base_url}/data/{chapter_hash}/{chapter_img_filename}"
+                image_url = f"{base_url}/data/{chapter_hash}/{chapter_image_filename}"
+                
+            request_urls.append(image_url)
 
-            response = requests.get(image_url)
-            filename = f"{Path(Path(__file__).resolve().parent.parent, 'temp', chapter_img_filename)}"
+        requests = [grequests.get(url) for url in request_urls]
+        responses = grequests.map(requests)
+        
+        for response, chapter_image_filename in zip(responses, chapter_image_filenames):
+            filename = str(Path(PATH_TO_TEMP, chapter_image_filename))
+            
+            if filename in files:
+                filename = str(Path(PATH_TO_TEMP, f"{uuid4().hex}-{chapter_image_filename}"))
+                
             with open(filename, "wb") as file:
                 file.write(response.content)
-
+            
             files.append(filename)
 
         return files
@@ -246,7 +257,7 @@ class MangaChapter:
         files_list = self.download_imgs(data_saver=data_saver)
 
         pdf = FPDF()
-        for file in loop(files_list, description="Adding Chapter Images to PDF"):
+        for file in loop(files_list, desc="Adding Chapter Images to PDF"):
             image = Image.open(file)
 
             width, height = image.size

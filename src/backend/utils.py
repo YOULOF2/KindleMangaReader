@@ -1,21 +1,20 @@
 import tqdm
 import random
-import requests
 from pathlib import Path
 import glob
 import os
+
+import gevent.monkey
+gevent.monkey.patch_all()
+
+import requests
 
 
 PATH_TO_TEMP = Path(Path(__file__).resolve().parent.parent, "temp")
 
 
 def loop(*args, **kwargs):
-    desciption = kwargs["description"]
-    del kwargs["description"]
-
     progressbar = tqdm.tqdm(*args, **kwargs, disable=False)
-    progressbar.set_description(desciption)
-
     return progressbar
 
 
