@@ -1,5 +1,4 @@
 from concurrent.futures import ThreadPoolExecutor
-from dotenv import load_dotenv
 import os
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
@@ -80,9 +79,10 @@ def send_notification_email(files_sent: list[str]):
     <html>
     <head></head>
     <body>
-        <p>The Ebooks:</p><br>
+        <p>The Ebooks:</p>
         {ulify(file_titles)}
         <br>
+        <p>Have been sent successfully to Kindle</p>
         from KindleMangaReader
     </body>
     </html>
