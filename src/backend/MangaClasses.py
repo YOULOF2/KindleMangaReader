@@ -3,12 +3,14 @@ from fpdf import FPDF
 from PyPDF2 import PdfMerger
 from pathlib import Path
 import pickle
-from src.backend.Utils import get_file_size_for, get_request_for, PATH_TO_TEMP, loop
+from src.backend.Utils import get_file_size_for, get_request_for, PATH_TO_TEMP, loop, reformate_image
 from uuid import uuid4
 from humanize import number
 import validators
 from src.backend.ConvertToMOBI import list_to_mobi
 from uuid import uuid4
+from loguru import logger
+
 
 import grequests
 import requests
@@ -165,7 +167,8 @@ class MangaVolume:
     def to_mobi(self, data_saver=True) -> str:
         all_images = []
 
-        for chapter in loop(self.chapters, desc=f"Downloading Images for {self.title} volume"):
+        for chapter in self.chapters:
+            logger.info(f"Downloading Images for {self.title} volume")
             chapter_images = chapter.download_imgs(data_saver=data_saver)
             all_images = chapter_images + all_images
 
@@ -181,6 +184,10 @@ class MangaVolume:
             cover_filename = self.cover
 
         all_images.insert(0, cover_filename)
+        
+        end_of_volume_page = str(Path(Path(__file__).parent, "assets\\tev.jpg"))
+        
+        all_images.append(end_of_volume_page)
 
         if self.title == "UnGrpd":
             filename = f"{self.manga.title} {self.title} Volume"
@@ -248,6 +255,9 @@ class MangaChapter:
                 
             with open(filename, "wb") as file:
                 file.write(response.content)
+                file.close()
+                
+            reformate_image(filename)
             
             files.append(filename)
 
@@ -312,6 +322,10 @@ class MangaChapter:
 
     def to_mobi(self, data_saver=True) -> str:
         files_list = self.download_imgs(data_saver=data_saver)
+        
+        end_of_chapter_page = str(Path(Path(__file__).parent, "assets\\tec.jpg"))
+        
+        files_list.append(end_of_chapter_page)
 
         mobi_path = list_to_mobi(
             input_list=files_list,

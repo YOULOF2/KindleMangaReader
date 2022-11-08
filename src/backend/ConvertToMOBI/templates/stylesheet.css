@@ -11,3 +11,11 @@ a {
 #toc ol {
     list-style-type: none;
 }
+img {
+ display: block;
+
+width: 100%;
+
+object-fit: contain;
+
+}

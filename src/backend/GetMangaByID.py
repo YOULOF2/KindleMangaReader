@@ -77,7 +77,7 @@ def get_manga_by_id(manga_id: str) -> Manga:
 
         else:
             manga_cover_url = str(
-                Path(Path(__file__).parent, "cnf.jpg")
+                Path(Path(__file__).parent, "assets\\cnf.jpg")
                 
             )
         volume.title = volume_title

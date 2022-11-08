@@ -1,0 +1,1 @@
+C:\Users\Asus\Programming\PythonProjects\KindleMangaReader\Scripts\python.exe C:\Users\Asus\Programming\PythonProjects\KindleMangaReader\src\main.py
