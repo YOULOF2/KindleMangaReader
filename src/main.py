@@ -1,5 +1,5 @@
 from time import time
-from backend import get_manga_by_id, Manga, send_pdfs, send_by_usb
+from backend import get_manga_by_id, load_manga, send_attachment_by_email, send_by_usb, send_notification_email
 from flask import (
     Flask,
     render_template,
@@ -52,7 +52,7 @@ def get_manga():
 
 @app.route("/<string:msID>/manga", methods=["GET"])
 def display_manga(msID: str):
-    manga = Manga.load(msID)
+    manga = load_manga(msID)
     return render_template(
         "display_manga.html",
         id=manga.id,
@@ -66,7 +66,7 @@ def display_manga(msID: str):
 
 @app.route("/<string:msID>/volume/<string:title>", methods=["GET"])
 def display_volume(msID: str, title: str):
-    manga: Manga = Manga.load(msID)
+    manga = load_manga(msID)
 
     que_dict: dict = json.loads(request.cookies.get("que"))
     if title not in que_dict:
@@ -214,10 +214,10 @@ def que_checkout(msID: str):
         )
 
     # Load manga object
-    manga: Manga = Manga.load(msID)
+    manga = load_manga(msID)
 
-    chapter_objects = []
-    volume_objects_titles = []
+    chapter_objects = set()
+    volume_objects_titles = set()
 
     files_to_send = []
 
@@ -227,9 +227,9 @@ def que_checkout(msID: str):
                 for _ in range(len(all_volume_chapters)):
                     for chapter_obj in volume_obj.chapters:
                         if volume_chapter.chapter_number == chapter_obj.number:
-                            volume_objects_titles.append(volume_obj.title)
+                            volume_objects_titles.add(volume_obj.title)
 
-                            chapter_objects.append(chapter_obj)
+                            chapter_objects.add(chapter_obj)
     
     submit_type = request.form.get("action")
     as_mobi = request.form.get("mobi")
@@ -247,7 +247,6 @@ def que_checkout(msID: str):
                 
                 files_to_send += volume_files
                 
-
     for chapter in chapter_objects:
         if not as_mobi:
             filename = chapter.to_pdf()
@@ -256,8 +255,8 @@ def que_checkout(msID: str):
         files_to_send.append(filename)
 
     if send_by_email:
-        send_pdfs(
-            pdf_files=files_to_send,
+        send_attachment_by_email(
+            files=files_to_send,
         )
     else:
         send_by_usb(
@@ -269,6 +268,8 @@ def que_checkout(msID: str):
 
     processing_time = round((processing_end - processing_start) / 60, 1)
     logger.info(f"Processing has taken {processing_time} minutes")
+    
+    send_notification_email(files_to_send)
 
     return redirect(url_for("display_success", processing_time=processing_time))
 

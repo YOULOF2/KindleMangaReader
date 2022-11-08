@@ -48,9 +48,9 @@ def list_to_mobi(
     logger.info(f"Created {mobi_name}.epub")
 
     command = f'{PATH_TO_KINDLEGEN} "{epub_output_file}" -c0 -o "{mobi_name}.mobi"'
-    subprocess.Popen(command, shell=True).wait()
+    os.popen(command)
     
     mobi_file_path = str(Path(PATH_TO_TEMP, f"{mobi_name}.mobi"))
-    logger.info(mobi_file_path)
+    logger.info(mobi_file_path + "\n")
     
     return mobi_file_path
