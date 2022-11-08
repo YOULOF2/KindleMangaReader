@@ -164,4 +164,3 @@ cython_debug/
 pyvenv.cfg
 *.bat
 *.ico
-Include/*
