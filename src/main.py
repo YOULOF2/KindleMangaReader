@@ -183,6 +183,22 @@ def que_remove(msID: str, item_que_id: str):
 
 @app.route("/<string:msID>/que/checkout", methods=["POST"])
 def que_checkout(msID: str):
+    upscale = request.form.get("upscale")
+    if upscale:
+        upscale = True
+    else:
+        upscale = False
+        
+    eject_when_done = request.form.get("eject")
+    if eject_when_done:
+        eject_when_done = True
+    else:
+        eject_when_done = False
+        
+    submit_type = request.form.get("action")
+    as_mobi = request.form.get("mobi")
+    send_by_email = False if submit_type == "Send By USB" else True
+    
     class InternalVolumeChapter:
         def __init__(self, volume_title: str, chapter_number: str) -> None:
             self.volume_title = volume_title
@@ -230,28 +246,24 @@ def que_checkout(msID: str):
                             volume_objects_titles.add(volume_obj.title)
 
                             chapter_objects.add(chapter_obj)
-    
-    submit_type = request.form.get("action")
-    as_mobi = request.form.get("mobi")
-        
-    send_by_email = False if submit_type == "Send By USB" else True
         
     for volume_obj in manga.volumes:
         for complete_volume_title in complete_volumes_titles:
             if complete_volume_title == volume_obj.title:
                 logger.info(f"Creating volume {volume_obj.title}")
                 if not as_mobi:
-                    volume_files = volume_obj.to_pdf(data_saver=send_by_email)
+                    volume_files = volume_obj.to_pdf(data_saver=send_by_email, upscale=upscale)
                 else:
-                    volume_files = [volume_obj.to_mobi(data_saver=send_by_email)]
+                    volume_files = [volume_obj.to_mobi(data_saver=send_by_email, upscale=upscale)]
                 
                 files_to_send += volume_files
                 
     for chapter in chapter_objects:
+        logger.info(f"Creating chapter {chapter.number}")
         if not as_mobi:
-            filename = chapter.to_pdf()
+            filename = chapter.to_pdf(upscale=upscale)
         else:
-            filename = chapter.to_mobi()
+            filename = chapter.to_mobi(upscale=upscale)
         files_to_send.append(filename)
 
     if send_by_email:
@@ -262,6 +274,7 @@ def que_checkout(msID: str):
         send_by_usb(
             drive_title="Kindle",
             files=files_to_send,
+            eject=eject_when_done,
         )
 
     processing_end = time()

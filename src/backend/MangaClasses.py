@@ -10,6 +10,7 @@ import validators
 from src.backend.ConvertToMOBI import list_to_mobi
 from uuid import uuid4
 from loguru import logger
+from src.backend.RealESRGAN import vulkan_upscale_images
 
 
 import grequests
@@ -63,7 +64,7 @@ class MangaVolume:
         self.cover = cover
         self.manga = manga
 
-    def to_pdf(self, in_parts=True, data_saver=True) -> list[str]:
+    def to_pdf(self, in_parts=True, data_saver=True, upscale=False) -> list[str]:
         all_pdfs = []
 
         if "https://" in self.cover:
@@ -103,7 +104,7 @@ class MangaVolume:
         for chapter in loop(
             self.chapters, desc="Converting Chapters to PDFs", colour="RED"
         ):
-            all_pdfs.insert(0, chapter.to_pdf(data_saver=data_saver))
+            all_pdfs.insert(0, chapter.to_pdf(data_saver=data_saver, upscale=upscale))
 
         # Add cover image pdf to all_pdfs
         all_pdfs.insert(0, cover_pdf_filename)
@@ -164,12 +165,12 @@ class MangaVolume:
 
         return list(all_volume_parts)
 
-    def to_mobi(self, data_saver=True) -> str:
+    def to_mobi(self, data_saver=True, upscale=False) -> str:
         all_images = []
 
         for chapter in self.chapters:
             logger.info(f"Downloading Images for {self.title} volume")
-            chapter_images = chapter.download_imgs(data_saver=data_saver)
+            chapter_images = chapter.download_imgs(data_saver=data_saver, upscale=upscale)
             all_images = chapter_images + all_images
 
         if validators.url(self.cover):
@@ -218,7 +219,7 @@ class MangaChapter:
         self.manga = manga_obj
         self.volume = volume_obj
 
-    def download_imgs(self, data_saver=True) -> list[str]:
+    def download_imgs(self, data_saver=True, upscale=False) -> list[str]:
         request_json = get_request_for(
             f"https://api.mangadex.org/at-home/server/{self.id}"
         )
@@ -260,11 +261,14 @@ class MangaChapter:
             reformate_image(filename)
             
             files.append(filename)
-
+            
+        if upscale:
+            vulkan_upscale_images(files)
+            
         return files
 
-    def to_pdf(self, data_saver=True, standalone=False) -> str:
-        files_list = self.download_imgs(data_saver=data_saver)
+    def to_pdf(self, data_saver=True, standalone=False, upscale=False) -> str:
+        files_list = self.download_imgs(data_saver=data_saver, upscale=upscale)
 
         pdf = FPDF()
         for file in loop(files_list, desc="Adding Chapter Images to PDF"):
@@ -320,8 +324,8 @@ class MangaChapter:
 
         return pdf_filename
 
-    def to_mobi(self, data_saver=True) -> str:
-        files_list = self.download_imgs(data_saver=data_saver)
+    def to_mobi(self, data_saver=True, upscale=False) -> str:
+        files_list = self.download_imgs(data_saver=data_saver, upscale=upscale)
         
         end_of_chapter_page = str(Path(Path(__file__).parent, "assets\\tec.jpg"))
         
