@@ -1,20 +1,19 @@
-from PIL import Image
-from fpdf import FPDF
-from PyPDF2 import PdfMerger
-from pathlib import Path
 import pickle
-from src.backend.Utils import get_file_size_for, get_request_for, PATH_TO_TEMP, loop, reformate_image
+from pathlib import Path
 from uuid import uuid4
-from humanize import number
-import validators
-from src.backend.ConvertToMOBI import list_to_mobi
-from uuid import uuid4
-from loguru import logger
-from src.backend.RealESRGAN import vulkan_upscale_images
-
 
 import grequests
 import requests
+import validators
+from PIL import Image
+from PyPDF2 import PdfMerger
+from fpdf import FPDF
+from humanize import number
+from loguru import logger
+from src.backend.ConvertToMOBI import list_to_mobi
+from src.backend.RealESRGAN import vulkan_upscale_images
+from src.backend.Utils import get_file_size_for, get_request_for, PATH_TO_TEMP, reformate_image
+from tqdm import tqdm
 
 
 class Manga:
@@ -101,7 +100,7 @@ class MangaVolume:
         cover_pdf_filename = f"{str(PATH_TO_TEMP)}\\volume {self.title} cover.pdf"
         cover_pdf.output(cover_pdf_filename, "F")
 
-        for chapter in loop(
+        for chapter in tqdm(
             self.chapters, desc="Converting Chapters to PDFs", colour="RED"
         ):
             all_pdfs.insert(0, chapter.to_pdf(data_saver=data_saver, upscale=upscale))
@@ -113,7 +112,7 @@ class MangaVolume:
         total_file_size = 0
         merger = PdfMerger()
         if in_parts:
-            for volume_part, pdf in loop(
+            for volume_part, pdf in tqdm(
                 enumerate(all_pdfs, start=1), desc="Creating Volume"
             ):
                 if total_file_size <= 11:
@@ -141,7 +140,7 @@ class MangaVolume:
                     filename = f"{PATH_TO_TEMP}\\{self.manga.title} {number.ordinal(self.title)} Volume Part {volume_part}.pdf"
 
         else:
-            for pdf in loop(all_pdfs, desc="Creating Volume"):
+            for pdf in tqdm(all_pdfs, desc="Creating Volume"):
                 merger.append(pdf)
 
             if self.title == "UnGrpd":
@@ -271,7 +270,7 @@ class MangaChapter:
         files_list = self.download_imgs(data_saver=data_saver, upscale=upscale)
 
         pdf = FPDF()
-        for file in loop(files_list, desc="Adding Chapter Images to PDF"):
+        for file in tqdm(files_list, desc="Adding Chapter Images to PDF"):
             image = Image.open(file)
 
             width, height = image.size

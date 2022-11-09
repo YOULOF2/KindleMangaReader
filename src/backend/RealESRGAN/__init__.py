@@ -1,17 +1,18 @@
 import os
-from subprocess import check_call, STDOUT
 from pathlib import Path
-from loguru import logger
+from subprocess import check_call, STDOUT
 from time import time
-from backend.Utils import loop
+
+from loguru import logger
+from tqdm import tqdm
 
 _REALESRGAN_VULKAN_PATH = str(Path(Path(__file__).parent, "realesrgan-ncnn-vulkan.exe"))
 
 
 def vulkan_upscale_images(input_images: list[str]):
     start_time = time()
-
-    for file in loop(input_images, desc="Upscalling Images", colour="RED"):
+    logger.info(f"There are {len(input_images)} images to upscale")
+    for file in tqdm(input_images, desc="Upscalling Images", colour="RED"):
         loop_start_time = time()
         file_extension = file.split("\\")[-1].split(".")[-1]
 
@@ -30,8 +31,9 @@ def vulkan_upscale_images(input_images: list[str]):
         loop_end_time = time()
         loop_processing_time = round((loop_end_time - loop_start_time)/60, 2)
         file_name = file.split('\\')[-1]
+        file_name = (file_name[15:] + '..') if len(file_name) > 15 else file_name
         
-        logger.info(f"Upscaled {file_name} in {loop_processing_time} minutes")
+        logger.info(f" Upscaled {file_name[5:]} in {loop_processing_time} minutes")
    
 
     end_time = time()

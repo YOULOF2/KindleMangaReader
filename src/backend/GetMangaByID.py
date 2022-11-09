@@ -1,6 +1,7 @@
-from src.backend.MangaClasses import Manga, MangaVolume, MangaChapter
-from src.backend.Utils import clear_temp, get_request_for
 from pathlib import Path
+
+from src.backend.MangaClasses import Manga, MangaVolume, MangaChapter
+from src.backend.Utils import get_request_for
 
 __all__ = ["get_manga_by_id"]
 

@@ -1,8 +1,7 @@
-import tqdm
-import random
-from pathlib import Path
 import glob
 import os
+from pathlib import Path
+
 from PIL import Image
 from PIL import ImageFile
 
@@ -18,11 +17,6 @@ import requests
 
 
 PATH_TO_TEMP = Path(Path(__file__).resolve().parent.parent, "temp")
-
-
-def loop(*args, **kwargs):
-    progressbar = tqdm.tqdm(*args, **kwargs, disable=False)
-    return progressbar
 
 
 def get_request_for(url: str) -> dict:
@@ -51,14 +45,20 @@ def get_file_size_for(path_to_file: str) -> float:
 
 
 def reformate_image(ImageFilePath):
-    image = Image.open(ImageFilePath, "r")
-    image_size = image.size
-    width = image_size[0]
-    height = image_size[1]
+    image = Image.open(ImageFilePath, "r").convert("RGB")
+    image_width, image_height = image.size
 
-    wpercent = 2480 / float(width)
-    hsize = int((float(height) * float(wpercent)))
+    background = Image.new("RGB", (2480, 3508), (0, 0, 0, 1))
+    background_width, background_height = background.size
+
+    wpercent = 2480 / float(image_width)
+    hsize = int((float(image_height) * float(wpercent)))
     image = image.resize((2480, hsize), Image.Resampling.LANCZOS)
+
+    offset = ((background_width - image_width) // 2, (background_height - image_height) // 2)
+
+    background.paste(image, offset)
+
     image.save(ImageFilePath)
 
     logger.info("Image has been resized")

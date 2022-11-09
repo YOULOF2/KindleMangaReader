@@ -1,11 +1,11 @@
-from concurrent.futures import ThreadPoolExecutor
 import os
+import smtplib
+from concurrent.futures import ThreadPoolExecutor
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import smtplib
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 
 load_dotenv()
 

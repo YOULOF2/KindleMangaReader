@@ -15,7 +15,6 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see [http://www.gnu.org/licenses/]
 """
-import math
 import os
 import re
 import threading
@@ -31,13 +30,13 @@ MEDIA_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".gif": "image/gif"}
 TEMPLATE_DIR = Path(__file__).parent.joinpath("templates")
 
 
-
 def atof(text):
     try:
         retval = float(text)
     except ValueError:
         retval = text
     return retval
+
 
 def natural_keys(text):
     """
@@ -46,7 +45,7 @@ def natural_keys(text):
     (See Toothy"s implementation in the comments)
     float regex comes from https://stackoverflow.com/a/12643073/190597
     """
-    return [ atof(c) for c in re.split(r"[+-]?([0-9]+(?:[.][0-9]*)?|[.][0-9]+)", text) ]
+    return [atof(c) for c in re.split(r"[+-]?([0-9]+(?:[.][0-9]*)?|[.][0-9]+)", text)]
 
 
 def filter_images(files):
@@ -85,17 +84,17 @@ class EpubChapter:
 
 class EPubMaker(threading.Thread):
     def __init__(
-        self,
-        input_dir: str,
-        output_file: str,
-        epub_name: str,
-        author_name: str,
-        publisher_name: str,
-        page_turn_style="rtl",
-        wrap_pages=True,
-        grayscale=False,
-        max_width=None,
-        max_height=None,
+            self,
+            input_dir: str,
+            output_file: str,
+            epub_name: str,
+            author_name: str,
+            publisher_name: str,
+            page_turn_style="rtl",
+            wrap_pages=True,
+            grayscale=False,
+            max_width=None,
+            max_height=None,
     ):
         threading.Thread.__init__(self)
         self.dir = input_dir
@@ -195,7 +194,7 @@ class EPubMaker(threading.Thread):
             image["width"], image["height"] = image_data.size
             image["type"] = image_data.get_format_mimetype()
             should_resize = (self.max_width and self.max_width < image["width"]) or (
-                self.max_height and self.max_height < image["height"]
+                    self.max_height and self.max_height < image["height"]
             )
             should_grayscale = self.grayscale and image_data.mode != "L"
             if not should_grayscale and not should_resize:
@@ -224,7 +223,7 @@ class EPubMaker(threading.Thread):
                     os.path.join("pages", image["id"] + ".xhtml"),
                     template.render(image),
                 )
-                
+
             self.check_is_stopped()
 
     def write_template(self, name, *, out=None, data=None):

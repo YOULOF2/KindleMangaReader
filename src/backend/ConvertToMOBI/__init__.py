@@ -1,12 +1,12 @@
-from src.backend.ConvertToMOBI.EpubMaker import EPubMaker
-from src.backend.Utils import PATH_TO_TEMP, get_file_size_for
-from pathlib import Path
 import os
-import shutil
-from uuid import uuid4
 import re
+import shutil
+from pathlib import Path
+from uuid import uuid4
+
 from loguru import logger
-import subprocess
+from src.backend.ConvertToMOBI.EpubMaker import EPubMaker
+from src.backend.Utils import PATH_TO_TEMP
 
 PATH_TO_KINDLEGEN = str(Path(Path(__file__).parent, "kindlegen.exe"))
 FILES_TO_COPY = ["cnf.jpg", "tec.jpg", "tev.jpg"]

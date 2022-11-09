@@ -1,4 +1,7 @@
+import itertools
+import json
 from time import time
+
 from backend import get_manga_by_id, load_manga, send_attachment_by_email, send_by_usb, send_notification_email
 from flask import (
     Flask,
@@ -9,9 +12,6 @@ from flask import (
     make_response,
     flash,
 )
-import json
-import itertools
-
 from loguru import logger
 
 app = Flask(__name__)
@@ -188,17 +188,17 @@ def que_checkout(msID: str):
         upscale = True
     else:
         upscale = False
-        
+
     eject_when_done = request.form.get("eject")
     if eject_when_done:
         eject_when_done = True
     else:
         eject_when_done = False
-        
+
     submit_type = request.form.get("action")
     as_mobi = request.form.get("mobi")
     send_by_email = False if submit_type == "Send By USB" else True
-    
+
     class InternalVolumeChapter:
         def __init__(self, volume_title: str, chapter_number: str) -> None:
             self.volume_title = volume_title
@@ -246,7 +246,7 @@ def que_checkout(msID: str):
                             volume_objects_titles.add(volume_obj.title)
 
                             chapter_objects.add(chapter_obj)
-        
+
     for volume_obj in manga.volumes:
         for complete_volume_title in complete_volumes_titles:
             if complete_volume_title == volume_obj.title:
@@ -255,9 +255,9 @@ def que_checkout(msID: str):
                     volume_files = volume_obj.to_pdf(data_saver=send_by_email, upscale=upscale)
                 else:
                     volume_files = [volume_obj.to_mobi(data_saver=send_by_email, upscale=upscale)]
-                
+
                 files_to_send += volume_files
-                
+
     for chapter in chapter_objects:
         logger.info(f"Creating chapter {chapter.number}")
         if not as_mobi:
@@ -281,7 +281,7 @@ def que_checkout(msID: str):
 
     processing_time = round((processing_end - processing_start) / 60, 1)
     logger.info(f"Processing has taken {processing_time} minutes")
-    
+
     send_notification_email(files_to_send)
 
     return redirect(url_for("display_success", processing_time=processing_time))
